@@ -40,8 +40,8 @@ export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    fetch('/api/health')
-      .then((r) => r.json())
+    api
+      .health()
       .then((h) => {
         if (!h.auth) setAuthed(true); // dev server without APP_PASSWORD
       })
