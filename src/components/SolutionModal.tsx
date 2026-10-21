@@ -1,258 +1,145 @@
 import React, { useState } from 'react';
-import {
-  Wand2,
-  X,
-  Sparkles,
-  CheckCircle2,
-  Building,
-  Users,
-  Send,
-  ExternalLink,
-  Laptop,
-  Flame,
-  ArrowRight,
-} from 'lucide-react';
-import { Problem } from '../types/dashboard';
+import { Wand2, X, Users, Send, Laptop, Copy } from 'lucide-react';
+import type { Problem } from '../types/dashboard';
+import type { JobRow, LeadRow, SolutionRow } from '../types/db';
+import { Btn, Pill, copyText, scoreTone } from './ui';
+import { CHANNEL_LABELS, isRunning } from '../utils/mappers';
+import { asList } from '../pages/SolutionsPage';
 
-interface SolutionModalProps {
+interface Props {
   problem: Problem | null;
+  solution?: SolutionRow;
+  leads: LeadRow[];
+  jobs: JobRow[];
   onClose: () => void;
-  onLaunchCampaign: (problem: Problem) => void;
+  onBuildSolution: (problemId: string) => void;
+  onFindLeads: (problemId: string) => void;
+  onWriteMessage: (leadId: string) => void;
 }
 
-export const SolutionModal: React.FC<SolutionModalProps> = ({
-  problem,
-  onClose,
-  onLaunchCampaign,
-}) => {
+export const SolutionModal: React.FC<Props> = ({ problem, solution, leads, jobs, onClose, onBuildSolution, onFindLeads, onWriteMessage }) => {
+  const [tab, setTab] = useState<'architecture' | 'leads' | 'demo'>('architecture');
   if (!problem) return null;
-
-  const [activeTab, setActiveTab] = useState<'architecture' | 'leads' | 'demo'>('architecture');
-  const [isLaunching, setIsLaunching] = useState(false);
-
-  const matchedLeads = [
-    {
-      name: 'مجموعة المشرق الطبية',
-      contact: 'د. سامي العلي (مدير التشغيل)',
-      city: 'الرياض',
-      match: '98%',
-      phone: '+966 50 *** 4120',
-    },
-    {
-      name: 'مجمع واحة الصحة التخصصي',
-      contact: 'أ. هناء القاسم (مديرة تجربة المريض)',
-      city: 'جدة',
-      match: '95%',
-      phone: '+966 55 *** 8819',
-    },
-    {
-      name: 'مركز كير أند مور لجراحة اليوم الواحد',
-      contact: 'د. فيصل المنصور (المؤسس)',
-      city: 'الدمام',
-      match: '91%',
-      phone: '+966 54 *** 3302',
-    },
-  ];
-
-  const handleLaunch = () => {
-    setIsLaunching(true);
-    setTimeout(() => {
-      setIsLaunching(false);
-      onLaunchCampaign(problem);
-      onClose();
-    }, 1200);
-  };
+  const building = isRunning(jobs, 'build_solution', 'problem_id', problem.id);
+  const finding = isRunning(jobs, 'find_leads', 'problem_id', problem.id);
+  const steps = asList(solution?.workflow_steps);
+  const tools = asList(solution?.tools_needed);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Modal Header */}
-        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center shadow-sm">
-              <Wand2 className="w-5 h-5" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between gap-4 bg-slate-50/50">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <Wand2 className="w-4 h-4" />
             </div>
-            <div>
-              <h3 className="text-base font-extrabold text-slate-900">
-                استوديو بناء الحل الذكي (Solution Studio)
-              </h3>
-              <p className="text-xs text-slate-500">
-                تحويل مشكلة العمل المرصودة إلى منتج برمجي وعرض تجريبي مقنع
-              </p>
+            <div className="min-w-0">
+              <h3 className="text-sm font-extrabold text-slate-900 leading-relaxed">{problem.summary}</h3>
+              <div className="flex gap-1.5 mt-2 flex-wrap">
+                <Pill tone={scoreTone(problem.score)}>{problem.score}/100</Pill>
+                <Pill>{problem.sector}</Pill>
+                <Pill>{problem.sourceName}</Pill>
+                {problem.whoSuffers && <Pill tone="blue">{problem.whoSuffers}</Pill>}
+              </div>
             </div>
           </div>
-
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-          >
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-5">
-          {/* Problem Banner */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-            <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-              <span className="font-bold text-slate-700">المشكلة المستهدفة:</span>
-              <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-bold">
-                القطاع: {problem.sector}
-              </span>
+        <div className="px-6 pt-4 flex gap-2">
+          {(
+            [
+              ['architecture', 'الحل', Wand2],
+              ['leads', `العملاء (${leads.length})`, Users],
+              ['demo', 'سيناريو العرض', Laptop],
+            ] as const
+          ).map(([k, label, Icon]) => (
+            <button
+              key={k}
+              onClick={() => setTab(k)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 ${tab === k ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            >
+              <Icon className="w-3.5 h-3.5" /> {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6 overflow-y-auto flex-1">
+          {!solution ? (
+            <div className="py-10 text-center space-y-4">
+              <p className="text-sm text-slate-500">لم يُبنَ حل لهذه المشكلة بعد.</p>
+              <Btn variant="primary" busy={building} onClick={() => onBuildSolution(problem.id)}>
+                <Wand2 className="w-4 h-4" /> {building ? 'جاري البناء…' : 'ابنِ الحل'}
+              </Btn>
             </div>
-            <h4 className="text-sm font-black text-slate-900 leading-snug">
-              {problem.title}
-            </h4>
-            <p className="text-xs text-slate-600 mt-1.5">{problem.summary}</p>
-          </div>
-
-          {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-            <button
-              onClick={() => setActiveTab('architecture')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'architecture'
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-500 hover:bg-slate-100'
-              }`}
-            >
-              هيكلية الحل البرمجي المقترح
-            </button>
-            <button
-              onClick={() => setActiveTab('leads')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'leads'
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-500 hover:bg-slate-100'
-              }`}
-            >
-              العملاء المتطابقون ({problem.leadsCount} شركة)
-            </button>
-            <button
-              onClick={() => setActiveTab('demo')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'demo'
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-500 hover:bg-slate-100'
-              }`}
-            >
-              العرض التوضيحي (Interactive Demo)
-            </button>
-          </div>
-
-          {/* Tab 1: Architecture */}
-          {activeTab === 'architecture' && (
-            <div className="space-y-4 text-xs animate-in fade-in duration-150">
-              <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100">
-                <span className="font-bold text-emerald-900 block mb-1 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                  مواصفات الحل المولّد بالذكاء الاصطناعي:
-                </span>
-                <p className="text-emerald-950 font-medium leading-relaxed">
-                  {problem.suggestedSolution}
-                </p>
+          ) : tab === 'architecture' ? (
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-base font-extrabold text-slate-900">{solution.solution_name}</h4>
+                {solution.pitch && <p className="text-xs text-slate-700 leading-loose mt-2">{solution.pitch}</p>}
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-                  <span className="text-[11px] font-bold text-slate-400 block mb-1">
-                    قيمة التوفير المتوقعة للعميل
-                  </span>
-                  <span className="text-base font-extrabold text-slate-900 font-['Plus_Jakarta_Sans',sans-serif] tabular-nums">
-                    35% - 40%
-                  </span>
-                  <p className="text-[10px] text-slate-500 mt-0.5">
-                    تقليص ساعات المتابعة اليدوية وهدر المواعيد
-                  </p>
+              {steps.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold text-slate-400 mb-2">خطوات المسار</p>
+                  <ol className="space-y-1.5 list-decimal pr-5 text-xs text-slate-700">
+                    {steps.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ol>
                 </div>
-
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-                  <span className="text-[11px] font-bold text-slate-400 block mb-1">
-                    متوسط قيمة الاشتراك السنوي
-                  </span>
-                  <span className="text-base font-extrabold text-emerald-700 font-['Plus_Jakarta_Sans',sans-serif] tabular-nums">
-                    $4,800 / سنوياً
-                  </span>
-                  <p className="text-[10px] text-slate-500 mt-0.5">
-                    تسعير مناسب لشركات الفئة المتوسطة
-                  </p>
+              )}
+              {tools.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {tools.map((t) => (
+                    <Pill key={t} tone="blue">
+                      {t}
+                    </Pill>
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
-          )}
-
-          {/* Tab 2: Matched Leads */}
-          {activeTab === 'leads' && (
-            <div className="space-y-2.5 animate-in fade-in duration-150">
-              <p className="text-xs text-slate-500 mb-2">
-                تم استخراج جهات اتصال مباشرة لصناع القرار المتأثرين بهذه المشكلة عبر خرائط Google وLinkedIn:
-              </p>
-              {matchedLeads.map((lead, idx) => (
-                <div
-                  key={idx}
-                  className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs"
-                >
-                  <div>
-                    <h5 className="font-bold text-slate-900">{lead.name}</h5>
-                    <p className="text-[11px] text-slate-500">{lead.contact} · {lead.city}</p>
+          ) : tab === 'leads' ? (
+            <div className="space-y-3">
+              <Btn variant="primary" busy={finding} onClick={() => onFindLeads(problem.id)}>
+                <Users className="w-3.5 h-3.5" /> {finding ? 'جاري البحث…' : leads.length ? 'ابحث عن المزيد' : 'ابحث عن عملاء'}
+              </Btn>
+              {leads.length === 0 && <p className="text-xs text-slate-400 pt-2">لا يوجد عملاء بعد.</p>}
+              {leads.map((l) => (
+                <div key={l.id} className="flex items-start justify-between gap-3 p-3.5 rounded-2xl bg-slate-50">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-900">{l.name}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{l.gap_found || '—'}</p>
+                    <div className="flex gap-1.5 mt-2">
+                      <Pill tone={scoreTone(l.fit_score ?? 0)}>{l.fit_score ?? 0}%</Pill>
+                      {l.contact_channel && <Pill tone="blue">{CHANNEL_LABELS[l.contact_channel]}</Pill>}
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <span className="px-2 py-0.5 rounded-md font-bold text-emerald-700 bg-emerald-50 text-[11px] font-['Plus_Jakarta_Sans',sans-serif] tabular-nums">
-                      تطابق {lead.match}
-                    </span>
-                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">{lead.phone}</p>
-                  </div>
+                  <Btn
+                    busy={jobs.some((j) => j.status === 'running' && j.action === 'write_message' && j.params?.lead_id === l.id)}
+                    disabled={!l.contact_channel}
+                    onClick={() => onWriteMessage(l.id)}
+                  >
+                    <Send className="w-3.5 h-3.5" /> اكتب رسالة
+                  </Btn>
                 </div>
               ))}
             </div>
-          )}
-
-          {/* Tab 3: Demo Preview */}
-          {activeTab === 'demo' && (
-            <div className="space-y-3 animate-in fade-in duration-150 text-xs">
-              <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-emerald-400 font-bold flex items-center gap-1.5">
-                    <Laptop className="w-4 h-4" />
-                    نوع العرض التجريبي المصمم:
-                  </span>
-                  <span className="text-[11px] text-slate-400">جاهز للإرسال الفوري</span>
-                </div>
-                <h5 className="text-sm font-bold text-white">{problem.demoType}</h5>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  يتم إرسال رابط فريد لكل عميل محتمل يتضمن شعاره واسم شركته، مع إمكانية تجربة الحل بشكل تفاعلي خلال 60 ثانية قبل التحدث مع فريق المبيعات.
-                </p>
-              </div>
+          ) : (
+            <div>
+              {solution.demo_script ? (
+                <>
+                  <Btn onClick={() => copyText(solution.demo_script!)} className="mb-3">
+                    <Copy className="w-3.5 h-3.5" /> نسخ
+                  </Btn>
+                  <pre className="whitespace-pre-wrap text-xs leading-loose text-slate-800 bg-slate-50 rounded-2xl p-4 font-[inherit]">{solution.demo_script}</pre>
+                </>
+              ) : (
+                <p className="text-xs text-slate-400">لا يوجد سيناريو.</p>
+              )}
             </div>
           )}
-        </div>
-
-        {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors"
-          >
-            إلغاء
-          </button>
-
-          <button
-            onClick={handleLaunch}
-            disabled={isLaunching}
-            className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 flex items-center gap-2 transition-all cursor-pointer"
-          >
-            {isLaunching ? (
-              <>
-                <Sparkles className="w-4 h-4 animate-spin text-slate-950" />
-                <span>جاري توليد مسارات التواصل...</span>
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                <span>إطلاق حملة التواصل الآلية لهذا الحل</span>
-              </>
-            )}
-          </button>
         </div>
       </div>
     </div>

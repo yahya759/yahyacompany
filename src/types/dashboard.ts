@@ -8,9 +8,11 @@ export interface Problem {
   summary: string;
   sector: string;
   sectorKey: ProblemSector;
-  source: 'reddit' | 'x' | 'google-maps' | 'facebook';
+  source: 'reddit' | 'x' | 'google-maps' | 'facebook' | 'tavily' | 'other';
   sourceName: string;
   sourceUrl?: string;
+  status?: string;
+  whoSuffers?: string;
   score: number; // 0-100
   market: MarketRegion;
   leadsCount: number;
@@ -37,7 +39,9 @@ export interface OutreachMessage {
   companyName: string;
   city: string;
   country: string;
-  channel: 'whatsapp' | 'email' | 'linkedin';
+  channel: 'whatsapp' | 'email' | 'telegram' | 'instagram' | 'linkedin' | 'other';
+  subject?: string;
+  leadId?: string;
   channelLabel: string;
   detectedPainPoint: string;
   sourceSnippet: string;

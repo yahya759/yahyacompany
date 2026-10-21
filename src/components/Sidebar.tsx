@@ -19,6 +19,8 @@ interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   pendingCount: number;
+  runningJobs?: number;
+  onLogout?: () => void;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
@@ -27,6 +29,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
   pendingCount,
+  runningJobs = 0,
+  onLogout,
   mobileOpen = false,
   onCloseMobile,
 }) => {
@@ -137,11 +141,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-xs font-medium text-slate-300">محرك الرصد الذكي</span>
             <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              متصل (n8n v1.4)
+              متصل
             </span>
           </div>
           <p className="text-[11px] text-slate-400 line-clamp-1">
-            4 مسارات رصد نشطة تفحص الأسواق الآن
+            {runningJobs ? `${runningJobs} مهمة قيد التنفيذ الآن` : 'لا توجد مهام جارية'}
           </p>
         </div>
 
@@ -149,25 +153,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/40 hover:bg-slate-800/60 transition-colors">
           <div className="flex items-center gap-2.5">
             <div className="relative">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-                alt="سعود القحطاني"
-                referrerPolicy="no-referrer"
-                className="w-9 h-9 rounded-xl object-cover ring-2 ring-emerald-400/40"
-              />
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-300 font-extrabold flex items-center justify-center ring-2 ring-emerald-400/40">ي</div>
               <span className="absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0a1128]"></span>
             </div>
             <div className="text-right">
-              <p className="text-xs font-bold text-white leading-tight">سعود القحطاني</p>
-              <p className="text-[10px] text-slate-400">مدير تطوير الأعمال</p>
+              <p className="text-xs font-bold text-white leading-tight">يحيى</p>
+              <p className="text-[10px] text-slate-400">المؤسس</p>
             </div>
           </div>
+          <div className="flex items-center">
+          <button
+            title="تسجيل الخروج"
+            onClick={onLogout}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
           <button
             title="الإعدادات"
+            onClick={() => setActiveTab('settings')}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
           >
             <Settings className="w-4 h-4" />
           </button>
+          </div>
         </div>
       </div>
     </aside>
