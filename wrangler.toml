@@ -1,6 +1,0 @@
-# Cloudflare Pages project config.
-# Build command: npm run build   |   Build output directory: dist
-# Pages auto-detects ./functions as the Functions bundle (no extra config needed).
-name = "problem2client-dashboard"
-compatibility_date = "2025-01-01"
-pages_build_output_dir = "dist"
