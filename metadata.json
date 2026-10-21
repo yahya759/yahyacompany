@@ -1,0 +1,6 @@
+{
+  "name": "Problem2Client - تحويل المشاكل إلى عملاء",
+  "description": "منصة ذكية لاكتشاف مشاكل الأعمال في السوق العربي والخليجي، واستخراج العملاء المحتملين، وإرسال عروض وحلول مخصصة تلقائياً.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
