@@ -16,7 +16,6 @@ import { SolutionModal } from './components/SolutionModal';
 import { EditMessageModal } from './components/EditMessageModal';
 import { NewRadarModal } from './components/NewRadarModal';
 import { WorkflowLogsModal } from './components/WorkflowLogsModal';
-import { LoginScreen } from './components/LoginScreen';
 import { Btn, copyText } from './components/ui';
 import { RadarPage } from './pages/RadarPage';
 import { SolutionsPage } from './pages/SolutionsPage';
@@ -28,7 +27,7 @@ import { WorkflowsPage } from './pages/WorkflowsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import type { PageCtx } from './pages/types';
 import { useDashboardData } from './hooks/useDashboardData';
-import { api, clearToken, getToken } from './lib/api';
+import { api } from './lib/api';
 import { computeFunnel, computeStats, mapPendingMessages, mapProblems, mapWorkflows, settingsMap } from './utils/mappers';
 import type { MarketRegion, N8nWorkflow, OutreachMessage, ProblemSector } from './types/dashboard';
 import type { JobAction } from './types/db';
@@ -36,23 +35,8 @@ import type { JobAction } from './types/db';
 const AUTO_CHANNELS = ['whatsapp', 'email', 'telegram'];
 
 export default function App() {
-  const [authed, setAuthed] = useState<boolean>(!!getToken());
-  const [authChecked, setAuthChecked] = useState(false);
-
-  useEffect(() => {
-    api
-      .health()
-      .then((h) => {
-        if (!h.auth) setAuthed(true); // dev server without APP_PASSWORD
-      })
-      .catch(() => {})
-      .finally(() => setAuthChecked(true));
-    const onUnauth = () => setAuthed(false);
-    window.addEventListener('p2c-unauth', onUnauth);
-    return () => window.removeEventListener('p2c-unauth', onUnauth);
-  }, []);
-
-  const { data, error, loading, refresh } = useDashboardData(authed);
+  // No login screen: the dashboard opens straight into the app.
+  const { data, error, loading, refresh } = useDashboardData(true);
 
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -99,9 +83,6 @@ export default function App() {
         (marketFilter === 'all' || p.market === marketFilter),
     );
   }, [problems, searchQuery, activeSector, marketFilter]);
-
-  if (!authChecked) return null;
-  if (!authed) return <LoginScreen onDone={() => setAuthed(true)} />;
 
   if (!data || !stats) {
     return (
@@ -240,10 +221,6 @@ export default function App() {
         }}
         pendingCount={stats.pendingMessages}
         runningJobs={runningJobs}
-        onLogout={() => {
-          clearToken();
-          setAuthed(false);
-        }}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
