@@ -1,11 +1,8 @@
 import type { DashboardData, JobAction } from '../types/db';
 
-const KEY = 'p2c_token';
-/** Optional API origin when the frontend is hosted separately from server.ts. */
-const BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
-export const getToken = () => localStorage.getItem(KEY);
-export const setToken = (t: string) => localStorage.setItem(KEY, t);
-export const clearToken = () => localStorage.removeItem(KEY);
+/** Optional API origin when the frontend is hosted apart from the API. */
+const ENV = ((import.meta as any).env ?? {}) as Record<string, string | undefined>;
+const BASE = (ENV.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 export class ApiError extends Error {
   status: number;
@@ -16,32 +13,21 @@ export class ApiError extends Error {
 }
 
 async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
     ...init,
-    headers: {
-      'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-      ...(init.headers || {}),
-    },
+    headers: { 'content-type': 'application/json', ...(init.headers || {}) },
   });
+
+  // A static host (Cloudflare Pages, GitHub Pages…) answers unknown paths with
+  // index.html and status 200. Never treat HTML as a valid API response — that
+  // silently produced empty data and a blank screen.
+  const ct = res.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    throw new ApiError('لم يتم العثور على سيرفر الـ API على هذا العنوان (الصفحة مستضافة كملفات ثابتة فقط)', res.status);
+  }
+
   const body = await res.json().catch(() => ({}));
-  if (res.status === 401 && path !== '/api/login') {
-    clearToken();
-    window.dispatchEvent(new Event('p2c-unauth'));
-  }
-  if (!res.ok) {
-    // 404/405 usually means the page is served by a static host and the Express
-    // API isn't running behind it — surface that instead of a bare "HTTP 405".
-    const noApi =
-      (res.status === 404 || res.status === 405) && !res.headers.get('content-type')?.includes('application/json');
-    throw new ApiError(
-      noApi
-        ? 'سيرفر الـ API غير متاح على هذا العنوان (شغّل npm run dev أو npm start بدل استضافة ثابتة)'
-        : body?.error || `HTTP ${res.status}`,
-      res.status,
-    );
-  }
+  if (!res.ok) throw new ApiError((body as any)?.error || `HTTP ${res.status}`, res.status);
   return body as T;
 }
 
@@ -49,7 +35,6 @@ const json = (method: string, body: unknown) => ({ method, body: JSON.stringify(
 
 export const api = {
   health: () => req<{ ok: boolean; supabase: boolean; n8n: boolean; auth: boolean }>('/api/health'),
-  login: (password: string) => req<{ token: string }>('/api/login', json('POST', { password })),
   data: () => req<DashboardData>('/api/data'),
   runAction: (action: JobAction, params: Record<string, unknown> = {}) =>
     req<{ job_id?: string; [k: string]: any }>('/api/actions', json('POST', { action, params })),

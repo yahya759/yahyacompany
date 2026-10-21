@@ -11,7 +11,6 @@ import {
   Sparkles,
   Settings,
   HelpCircle,
-  LogOut,
   ChevronLeft,
 } from 'lucide-react';
 
@@ -20,7 +19,6 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   pendingCount: number;
   runningJobs?: number;
-  onLogout?: () => void;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
@@ -30,7 +28,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setActiveTab,
   pendingCount,
   runningJobs = 0,
-  onLogout,
   mobileOpen = false,
   onCloseMobile,
 }) => {
@@ -162,13 +159,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
           <div className="flex items-center">
-          <button
-            title="تسجيل الخروج"
-            onClick={onLogout}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
           <button
             title="الإعدادات"
             onClick={() => setActiveTab('settings')}

@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import express from 'express';
-import crypto from 'node:crypto';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 
@@ -11,21 +10,7 @@ const {
   SUPABASE_SERVICE_ROLE_KEY,
   N8N_WEBHOOK_URL,
   N8N_WEBHOOK_SECRET,
-  APP_PASSWORD: ENV_APP_PASSWORD,
-  SESSION_SECRET,
 } = process.env;
-
-/**
- * Dev-only fallback password. Locally (NODE_ENV !== 'production') the dashboard
- * accepts 123456 when APP_PASSWORD is not set, so development doesn't need any
- * environment setup. In production APP_PASSWORD must be set explicitly.
- */
-const DEV_PASSWORD = '123456';
-const APP_PASSWORD = ENV_APP_PASSWORD || (isProd ? '' : DEV_PASSWORD);
-if (!ENV_APP_PASSWORD) {
-  if (isProd) console.warn('[auth] APP_PASSWORD is not set — the API will refuse requests (503).');
-  else console.warn(`[auth] APP_PASSWORD is not set — using the dev password "${DEV_PASSWORD}".`);
-}
 const N8N_HEADER = process.env.N8N_WEBHOOK_HEADER || 'x-api-key';
 
 const db =
@@ -42,54 +27,18 @@ const ACTIONS = new Set([
   'write_followup',
 ]);
 
-/* ---------- auth (single shared password -> signed, expiring token) ---------- */
-const secret = SESSION_SECRET || APP_PASSWORD || '';
-const sign = (exp: number) => crypto.createHmac('sha256', secret).update(String(exp)).digest('hex');
-const sha = (s: string) => crypto.createHash('sha256').update(s).digest();
-const issueToken = () => {
-  const exp = Date.now() + 1000 * 60 * 60 * 24 * 7;
-  return `${exp}.${sign(exp)}`;
-};
-const verifyToken = (t: string) => {
-  const [expStr, sig] = t.split('.');
-  const exp = Number(expStr);
-  if (!exp || !sig || exp < Date.now()) return false;
-  const expected = sign(exp);
-  return sig.length === expected.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
-};
-const attempts = new Map<string, { n: number; t: number }>();
-
+/*
+ * The dashboard opens directly: there is no login screen and no password.
+ * Every /api route below is public by design, so make sure the deployment URL
+ * is not public (Cloudflare Access / basic auth / private network) if it holds
+ * real customer data.
+ */
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (_req, res) =>
-  res.json({ ok: true, supabase: !!db, n8n: !!N8N_WEBHOOK_URL, auth: !!APP_PASSWORD }),
+  res.json({ ok: true, supabase: !!db, n8n: !!N8N_WEBHOOK_URL, auth: false }),
 );
-
-app.post('/api/login', (req, res) => {
-  if (!APP_PASSWORD) return res.status(503).json({ error: 'APP_PASSWORD is not set on the server' });
-  const ip = req.ip || 'x';
-  const a = attempts.get(ip);
-  if (a && Date.now() - a.t < 15 * 60_000 && a.n >= 10)
-    return res.status(429).json({ error: 'محاولات كثيرة، جرّب بعد قليل' });
-  const ok = crypto.timingSafeEqual(sha(String(req.body?.password ?? '')), sha(APP_PASSWORD));
-  if (!ok) {
-    attempts.set(ip, { n: (a && Date.now() - a.t < 15 * 60_000 ? a.n : 0) + 1, t: Date.now() });
-    return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
-  }
-  attempts.delete(ip);
-  res.json({ token: issueToken() });
-});
-
-app.use('/api', (req, res, next) => {
-  if (!APP_PASSWORD) {
-    if (isProd) return res.status(503).json({ error: 'APP_PASSWORD is not set on the server' });
-    return next(); // dev only: open
-  }
-  const t = (req.headers.authorization || '').replace(/^Bearer /, '');
-  if (!t || !verifyToken(t)) return res.status(401).json({ error: 'unauthorized' });
-  next();
-});
 
 const needDb = () => {
   if (!db) throw Object.assign(new Error('Supabase غير مضبوط (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)'), { status: 503 });
