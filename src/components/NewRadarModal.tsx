@@ -4,7 +4,7 @@ import { Radar, X, Sparkles, MapPin, Search, Check, Globe } from 'lucide-react';
 interface NewRadarModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onStartScan: (keyword: string, sector: string, sources: string[]) => void;
+  onStartScan: (keyword: string, sector: string, sources: string[]) => Promise<boolean | void> | void;
 }
 
 export const NewRadarModal: React.FC<NewRadarModalProps> = ({
@@ -12,11 +12,9 @@ export const NewRadarModal: React.FC<NewRadarModalProps> = ({
   onClose,
   onStartScan,
 }) => {
-  if (!isOpen) return null;
-
   const [keyword, setKeyword] = useState('');
   const [sector, setSector] = useState('real-estate');
-  const [selectedSources, setSelectedSources] = useState<string[]>(['reddit', 'x', 'google-maps']);
+  const [selectedSources, setSelectedSources] = useState<string[]>(['reddit', 'tavily', 'google-maps']);
   const [isScanning, setIsScanning] = useState(false);
 
   const toggleSource = (src: string) => {
@@ -25,15 +23,18 @@ export const NewRadarModal: React.FC<NewRadarModalProps> = ({
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsScanning(true);
-    setTimeout(() => {
+    try {
+      const ok = await onStartScan(keyword.trim(), sector, selectedSources);
+      if (ok !== false) onClose();
+    } finally {
       setIsScanning(false);
-      onStartScan(keyword || 'خدمات الأعمال والشركات', sector, selectedSources);
-      onClose();
-    }, 1200);
+    }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -101,9 +102,9 @@ export const NewRadarModal: React.FC<NewRadarModalProps> = ({
             <div className="grid grid-cols-2 gap-2 text-xs">
               {[
                 { id: 'reddit', label: 'Reddit (مجتمعات الأعمال)' },
-                { id: 'x', label: 'منصة 𝕏 (الهاشتاقات والشكاوى)' },
+                { id: 'tavily', label: 'Tavily (بحث الويب)' },
                 { id: 'google-maps', label: 'خرائط Google (مراجعات الشركات)' },
-                { id: 'facebook', label: 'مجموعات فيسبوك المتخصصة' },
+                { id: 'facebook', label: 'مجموعات فيسبوك (Apify)' },
               ].map((src) => (
                 <button
                   type="button"
@@ -127,7 +128,7 @@ export const NewRadarModal: React.FC<NewRadarModalProps> = ({
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 text-[11px] text-slate-500 flex items-center gap-2">
             <Globe className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
-              يقوم مسار عمل n8n بربط نتائج المسح بـ Gemini 2.5 Flash لتصنيف شدة المشكلة وفرز العملاء المحتملين تلقائياً.
+              يُرسَل الأمر إلى n8n ويظهر التقدّم في «مسارات العمل»، والنتائج تنزل في رادار المشاكل وفرز العملاء المحتملين تلقائياً.
             </span>
           </div>
 

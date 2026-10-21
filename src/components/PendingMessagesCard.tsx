@@ -143,9 +143,9 @@ export const PendingMessagesCard: React.FC<PendingMessagesCardProps> = ({
               </div>
 
               {/* Demo URL preview */}
-              <div className="mt-2.5 flex items-center justify-between text-[11px] bg-emerald-50/60 px-3 py-1.5 rounded-lg border border-emerald-100">
+              {currentMessage.demoLink && (<div className="mt-2.5 flex items-center justify-between text-[11px] bg-emerald-50/60 px-3 py-1.5 rounded-lg border border-emerald-100">
                 <div className="flex items-center gap-1.5 text-emerald-800 font-semibold truncate">
-                  <span>رابط العرض التفاعلي:</span>
+                  <span>موقع النشاط:</span>
                   <span className="font-['Plus_Jakarta_Sans',sans-serif] underline truncate">
                     {currentMessage.demoLink}
                   </span>
@@ -159,7 +159,7 @@ export const PendingMessagesCard: React.FC<PendingMessagesCardProps> = ({
                   <ExternalLink className="w-3 h-3" />
                   معاينة
                 </a>
-              </div>
+              </div>)}
             </div>
           </div>
         )}
