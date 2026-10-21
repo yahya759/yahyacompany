@@ -11,9 +11,21 @@ const {
   SUPABASE_SERVICE_ROLE_KEY,
   N8N_WEBHOOK_URL,
   N8N_WEBHOOK_SECRET,
-  APP_PASSWORD,
+  APP_PASSWORD: ENV_APP_PASSWORD,
   SESSION_SECRET,
 } = process.env;
+
+/**
+ * Dev-only fallback password. Locally (NODE_ENV !== 'production') the dashboard
+ * accepts 123456 when APP_PASSWORD is not set, so development doesn't need any
+ * environment setup. In production APP_PASSWORD must be set explicitly.
+ */
+const DEV_PASSWORD = '123456';
+const APP_PASSWORD = ENV_APP_PASSWORD || (isProd ? '' : DEV_PASSWORD);
+if (!ENV_APP_PASSWORD) {
+  if (isProd) console.warn('[auth] APP_PASSWORD is not set — the API will refuse requests (503).');
+  else console.warn(`[auth] APP_PASSWORD is not set — using the dev password "${DEV_PASSWORD}".`);
+}
 const N8N_HEADER = process.env.N8N_WEBHOOK_HEADER || 'x-api-key';
 
 const db =

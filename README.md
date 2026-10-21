@@ -9,7 +9,15 @@ npm install
 npm run dev            # http://localhost:3000
 npm run build && npm start   # إنتاج
 ```
-المتصفح لا يرى أي سر: كل الاتصال بـ Supabase و n8n يتم من `server.ts`. الدخول بكلمة مرور (`APP_PASSWORD`).
+المتصفح لا يرى أي سر: كل الاتصال بـ Supabase و n8n يتم من `server.ts`.
+
+### الدخول
+| البيئة | كلمة المرور |
+|---|---|
+| تطوير (`npm run dev` / `NODE_ENV !== production`) | **`123456`** (افتراضية إذا `APP_PASSWORD` فاضي) |
+| إنتاج (`npm start`) | لازم تحدد `APP_PASSWORD` في البيئة، وإلا الـ API يرد `503` |
+
+المقارنة تتم في السيرفر فقط (`server.ts`) ولا تُخزَّن كلمة المرور في Supabase ولا في الكود للإنتاج. التوكن صالح 7 أيام ويُوقَّع بـ `SESSION_SECRET` (أو `APP_PASSWORD` إذا لم يُحدَّد).
 قاعدة البيانات: `supabase/migrations/0001_core_tables.sql`.
 
 ## عقد n8n (Main Flow)

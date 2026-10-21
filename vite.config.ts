@@ -17,6 +17,9 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // Dev server runs behind proxies (Arena preview, tunnels, ngrok...): accept
+      // whatever host header reaches it instead of rejecting with HTTP 403.
+      allowedHosts: true as const,
     },
   };
 });
