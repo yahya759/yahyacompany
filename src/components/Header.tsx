@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div>
           <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            مرحباً بك، سعود 👋
+            مرحباً بك، المهندس يحيى 👋
           </h1>
           <p className="text-[11px] md:text-xs text-slate-500 font-medium">
             الرادار الذكي يراقب الأسواق ويجهز لك فرص عملاء جديدة
