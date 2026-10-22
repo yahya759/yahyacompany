@@ -51,6 +51,7 @@ export interface LeadRow {
   city: string | null;
   website: string | null;
   phone: string | null;
+  place_id: string | null;
   gap_found: string | null;
   contact_channel: 'whatsapp' | 'email' | 'telegram' | 'instagram' | 'other' | null;
   contact_value: string | null;

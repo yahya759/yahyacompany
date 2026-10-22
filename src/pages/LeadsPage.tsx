@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { ExternalLink, Search } from 'lucide-react';
+import { ExternalLink, Globe, MapPin, Search } from 'lucide-react';
 import { Btn, Empty, PageHead, Panel, Pill, inputCls, scoreTone } from '../components/ui';
 import { CHANNEL_LABELS } from '../utils/mappers';
+import { mapsLink, searchLink } from '../lib/outreach';
 import { api } from '../lib/api';
 import type { PageCtx } from './types';
 
@@ -93,11 +94,37 @@ export const LeadsPage: React.FC<{ ctx: PageCtx }> = ({ ctx }) => {
                       <td className="py-3 px-2">
                         <p className="font-bold text-slate-900">{l.name}</p>
                         <p className="text-[11px] text-slate-500">{l.city || l.address || '—'}</p>
-                        {l.website && (
-                          <a href={l.website} target="_blank" rel="noreferrer" className="text-[11px] text-sky-700 hover:underline inline-flex items-center gap-1">
-                            الموقع <ExternalLink className="w-3 h-3" />
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          <a
+                            href={mapsLink(l)}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="افتح حسابه على خرائط Google (التقييمات والصور)"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold"
+                          >
+                            <MapPin className="w-3 h-3" /> الخريطة
                           </a>
-                        )}
+                          {l.website && (
+                            <a
+                              href={l.website}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="موقعه الإلكتروني"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 text-[11px] font-bold"
+                            >
+                              <Globe className="w-3 h-3" /> الموقع
+                            </a>
+                          )}
+                          <a
+                            href={searchLink(l)}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="ابحث عنه في Google (إنستجرام، فيسبوك…)"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 text-[11px] font-bold"
+                          >
+                            <ExternalLink className="w-3 h-3" /> بحث
+                          </a>
+                        </div>
                       </td>
                       <td className="py-3 px-2 max-w-xs leading-relaxed">{l.gap_found || '—'}</td>
                       <td className="py-3 px-2">

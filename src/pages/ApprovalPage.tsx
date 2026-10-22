@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Check, Copy, ExternalLink, RefreshCw, X } from 'lucide-react';
+import { Check, Copy, ExternalLink, MapPin, RefreshCw, X } from 'lucide-react';
 import { Btn, Empty, PageHead, Panel, Pill, copyText, inputCls } from '../components/ui';
 import { CHANNEL_LABELS, timeAgo } from '../utils/mappers';
-import { channelLink } from '../lib/outreach';
+import { channelLink, mapsLink } from '../lib/outreach';
 import { api } from '../lib/api';
 import type { MessageRow } from '../types/db';
 import type { PageCtx } from './types';
@@ -55,7 +55,14 @@ const MessageCard: React.FC<{ m: MessageRow; ctx: PageCtx }> = ({ m, ctx }) => {
     <Panel>
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <h3 className="text-sm font-extrabold text-slate-900">{lead?.name || 'عميل'}</h3>
+          <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+            {lead?.name || 'عميل'}
+            {lead && (
+              <a href={mapsLink(lead)} target="_blank" rel="noreferrer" title="شوف شغله على خرائط Google" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold">
+                <MapPin className="w-3 h-3" /> الخريطة
+              </a>
+            )}
+          </h3>
           <p className="text-[11px] text-slate-500 mt-0.5" dir="ltr" style={{ textAlign: 'right' }}>
             {lead?.contact_value}
           </p>
