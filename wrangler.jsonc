@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "problem2client-dashboard",
+  "name": "yahyacompany",
   "main": "worker/index.ts",
   "compatibility_date": "2025-01-01",
   "keep_vars": true,
