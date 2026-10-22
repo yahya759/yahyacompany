@@ -35,7 +35,16 @@ const json = (method: string, body: unknown) => ({ method, body: JSON.stringify(
 
 export const api = {
   health: () => req<{ ok: boolean; supabase: boolean; n8n: boolean; auth: boolean }>('/api/health'),
-  data: () => req<DashboardData>('/api/data'),
+  data: async (): Promise<DashboardData> => {
+    const d: any = await req<any>('/api/data');
+    const keys = ['problems', 'solutions', 'leads', 'messages', 'jobs', 'settings'];
+    // Never let a malformed/partial API reply crash the UI (white screen).
+    if (!d || typeof d !== 'object' || !keys.some((k) => Array.isArray(d[k])))
+      throw new ApiError('رد غير متوقع من الـ API — تأكد من إعدادات Supabase في Cloudflare', 502);
+    const out: any = { serverTime: d.serverTime || new Date().toISOString() };
+    for (const k of keys) out[k] = Array.isArray(d[k]) ? d[k] : [];
+    return out as DashboardData;
+  },
   runAction: (action: JobAction, params: Record<string, unknown> = {}) =>
     req<{ job_id?: string; [k: string]: any }>('/api/actions', json('POST', { action, params })),
   patchMessage: (id: string, patch: Record<string, unknown>) => req(`/api/messages/${id}`, json('PATCH', patch)),
