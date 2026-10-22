@@ -75,7 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold text-base tracking-tight text-white font-['Plus_Jakarta_Sans',sans-serif]">
-                    Problem<span className="text-emerald-400">2</span>Client
+                    FG<span className="text-emerald-400">T</span>W
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 font-medium">من المشكلة إلى الصفقة</p>
@@ -156,7 +156,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0a1128]"></span>
             </div>
             <div className="text-right">
-              <p className="text-xs font-bold text-white leading-tight">يحيى</p>
+              <p className="text-xs font-bold text-white leading-tight">المهندس يحيى</p>
               <p className="text-[10px] text-slate-400">المؤسس</p>
             </div>
           </div>

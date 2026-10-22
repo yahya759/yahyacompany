@@ -80,7 +80,7 @@ export async function chatJSON<T>(
           authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
           'content-type': 'application/json',
           'http-referer': 'https://workers.dev',
-          'x-title': 'Problem2Client',
+          'x-title': 'FGTW',
         },
         body: JSON.stringify({
           model,
