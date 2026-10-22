@@ -28,11 +28,10 @@ import { SettingsPage } from './pages/SettingsPage';
 import type { PageCtx } from './pages/types';
 import { useDashboardData } from './hooks/useDashboardData';
 import { api } from './lib/api';
+import { channelLink } from './lib/outreach';
 import { computeFunnel, computeStats, mapPendingMessages, mapProblems, mapWorkflows, settingsMap } from './utils/mappers';
 import type { MarketRegion, N8nWorkflow, OutreachMessage, ProblemSector } from './types/dashboard';
 import type { JobAction } from './types/db';
-
-const AUTO_CHANNELS = ['whatsapp', 'email', 'telegram'];
 
 export default function App() {
   // No login screen: the dashboard opens straight into the app.
@@ -124,13 +123,14 @@ export default function App() {
   const handleSendMessage = async (id: string) => {
     const m = pending.find((x) => x.id === id);
     if (!m) return;
-    if (AUTO_CHANNELS.includes(m.channel)) {
-      await guard(() => api.sendMessage(id), `تم تمرير الرسالة إلى ${m.leadName} عبر ${m.channelLabel}`);
-    } else {
-      await copyText(m.aiMessagePreview);
-      showToast('قناة يدوية: نُسخت الرسالة — أرسلها ثم علّمها «تم الإرسال» من صفحة الاعتماد');
-      setActiveTab('approval');
-    }
+    const lead = data.leads.find((l) => l.id === m.leadId);
+    const link = channelLink(m.channel, lead?.contact_value, m.aiMessagePreview, m.subject);
+    await copyText(m.aiMessagePreview);
+    if (link) window.open(link, '_blank', 'noopener');
+    await guard(
+      () => api.patchMessage(id, { status: 'approved' }),
+      link ? 'فُتحت المحادثة والرسالة منسوخة — أكّد «تم الإرسال» من صفحة الاعتماد' : 'نُسخت الرسالة — أرسلها يدوياً ثم أكّد من صفحة الاعتماد',
+    );
   };
   const handleSkipMessage = (id: string) => guard(() => api.patchMessage(id, { status: 'rejected' }), 'تم رفض الرسالة');
   const handleSaveEditedMessage = (id: string, text: string) => guard(() => api.patchMessage(id, { message: text }), 'تم حفظ التعديل');
@@ -138,7 +138,7 @@ export default function App() {
   const handleTriggerWorkflow = (id: string) => {
     if (id === 'find_problems') return setIsNewRadarOpen(true);
     if (id === 'write_followup') return void run('write_followup', {}, 'بدأ توليد المتابعات');
-    showToast('هذا المسار يُشغَّل من صفحة المشكلة أو العميل المعني');
+    showToast('هذه المهمة تُشغَّل من صفحة المشكلة أو العميل المعني');
   };
 
   const handleStartScan = async (keyword: string, sector: string, sources: string[]) => {

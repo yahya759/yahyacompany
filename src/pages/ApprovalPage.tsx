@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Check, Copy, RefreshCw, Send, X } from 'lucide-react';
+import { Check, Copy, ExternalLink, RefreshCw, X } from 'lucide-react';
 import { Btn, Empty, PageHead, Panel, Pill, copyText, inputCls } from '../components/ui';
 import { CHANNEL_LABELS, timeAgo } from '../utils/mappers';
+import { channelLink } from '../lib/outreach';
 import { api } from '../lib/api';
 import type { MessageRow } from '../types/db';
 import type { PageCtx } from './types';
@@ -13,7 +14,6 @@ const TABS: [MessageRow['status'], string][] = [
   ['failed', 'فشلت'],
   ['rejected', 'مرفوضة'],
 ];
-const AUTO = ['whatsapp', 'email', 'telegram'];
 const wordCount = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
 
 const MessageCard: React.FC<{ m: MessageRow; ctx: PageCtx }> = ({ m, ctx }) => {
@@ -23,7 +23,7 @@ const MessageCard: React.FC<{ m: MessageRow; ctx: PageCtx }> = ({ m, ctx }) => {
   const [subject, setSubject] = useState(m.subject || '');
   const [busy, setBusy] = useState<string | null>(null);
   const dirty = text !== m.message || subject !== (m.subject || '');
-  const auto = AUTO.includes(m.channel);
+  const link = channelLink(m.channel, lead?.contact_value, text, subject);
   const editable = m.status === 'pending_approval' || m.status === 'approved';
 
   const act = async (key: string, fn: () => Promise<unknown>, ok?: string) => {
@@ -39,11 +39,17 @@ const MessageCard: React.FC<{ m: MessageRow; ctx: PageCtx }> = ({ m, ctx }) => {
     }
   };
   const save = () => api.patchMessage(m.id, { message: text, subject: subject || null });
-  const send = () =>
-    act('send', async () => {
-      if (dirty) await save();
-      await api.sendMessage(m.id);
-    }, 'تم تمرير الرسالة للإرسال');
+  const open = () =>
+    act(
+      'open',
+      async () => {
+        if (dirty) await save();
+        await copyText(text);
+        if (link) window.open(link, '_blank', 'noopener');
+        if (m.status === 'pending_approval') await api.patchMessage(m.id, { status: 'approved' });
+      },
+      link ? 'فُتحت المحادثة والرسالة منسوخة — اضغط «تم الإرسال» بعد ما ترسل' : 'نُسخت الرسالة — أرسلها يدوياً ثم اضغط «تم الإرسال»',
+    );
 
   return (
     <Panel>
@@ -55,7 +61,7 @@ const MessageCard: React.FC<{ m: MessageRow; ctx: PageCtx }> = ({ m, ctx }) => {
           </p>
         </div>
         <div className="flex gap-1.5 flex-wrap justify-end">
-          <Pill tone={auto ? 'blue' : 'amber'}>{CHANNEL_LABELS[m.channel]}</Pill>
+          <Pill tone="blue">{CHANNEL_LABELS[m.channel]}</Pill>
           {m.type === 'followup' && <Pill tone="violet">متابعة</Pill>}
           <Pill>{timeAgo(m.sent_at || m.created_at)}</Pill>
         </div>
@@ -78,59 +84,35 @@ const MessageCard: React.FC<{ m: MessageRow; ctx: PageCtx }> = ({ m, ctx }) => {
       </div>
 
       <div className="flex flex-wrap gap-2 mt-4">
-        {m.status === 'pending_approval' && (
+        {(m.status === 'pending_approval' || m.status === 'approved') && (
           <>
-            {auto ? (
-              <Btn variant="primary" busy={busy === 'send'} onClick={send}>
-                <Send className="w-3.5 h-3.5" /> اعتماد وإرسال
-              </Btn>
-            ) : (
-              <Btn
-                variant="primary"
-                busy={busy === 'copy'}
-                onClick={() =>
-                  act('copy', async () => {
-                    if (dirty) await save();
-                    await copyText(text);
-                  }, 'تم النسخ — أرسلها يدوياً ثم اضغط «تم الإرسال»')
-                }
-              >
-                <Copy className="w-3.5 h-3.5" /> نسخ الرسالة
-              </Btn>
-            )}
-            <Btn busy={busy === 'ok'} onClick={() => act('ok', async () => { if (dirty) await save(); await api.patchMessage(m.id, { status: 'approved' }); })}>
-              <Check className="w-3.5 h-3.5" /> اعتماد فقط
+            <Btn variant="primary" busy={busy === 'open'} onClick={open}>
+              {link ? <ExternalLink className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {link ? `فتح ${CHANNEL_LABELS[m.channel]?.split(' ')[0] || 'المحادثة'} + نسخ` : 'نسخ الرسالة'}
             </Btn>
-            <Btn variant="danger" busy={busy === 'no'} onClick={() => act('no', () => api.patchMessage(m.id, { status: 'rejected' }))}>
-              <X className="w-3.5 h-3.5" /> رفض
-            </Btn>
-          </>
-        )}
-        {m.status === 'approved' && (
-          <>
-            {auto ? (
-              <Btn variant="primary" busy={busy === 'send'} onClick={send}>
-                <Send className="w-3.5 h-3.5" /> إرسال الآن
-              </Btn>
-            ) : (
+            {link && (
               <Btn onClick={async () => toast((await copyText(text)) ? 'تم النسخ' : 'تعذّر النسخ')}>
-                <Copy className="w-3.5 h-3.5" /> نسخ
+                <Copy className="w-3.5 h-3.5" /> نسخ فقط
               </Btn>
             )}
-            <Btn busy={busy === 'back'} onClick={() => act('back', () => api.patchMessage(m.id, { status: 'pending_approval' }))}>
-              إرجاع للانتظار
+            <Btn variant="dark" busy={busy === 'manual'} onClick={() => act('manual', async () => { if (dirty) await save(); await api.markSent(m.id); }, 'سُجّلت كمُرسلة')}>
+              <Check className="w-3.5 h-3.5" /> تم الإرسال
             </Btn>
+            {editable && dirty && (
+              <Btn busy={busy === 'save'} onClick={() => act('save', save, 'تم حفظ التعديل')}>
+                حفظ التعديل
+              </Btn>
+            )}
+            {m.status === 'pending_approval' ? (
+              <Btn variant="danger" busy={busy === 'no'} onClick={() => act('no', () => api.patchMessage(m.id, { status: 'rejected' }))}>
+                <X className="w-3.5 h-3.5" /> رفض
+              </Btn>
+            ) : (
+              <Btn busy={busy === 'back'} onClick={() => act('back', () => api.patchMessage(m.id, { status: 'pending_approval' }))}>
+                إرجاع للانتظار
+              </Btn>
+            )}
           </>
-        )}
-        {(m.status === 'pending_approval' || m.status === 'approved') && !auto && (
-          <Btn variant="dark" busy={busy === 'manual'} onClick={() => act('manual', () => api.markSent(m.id), 'تم تسجيلها كمُرسلة')}>
-            تم الإرسال يدوياً
-          </Btn>
-        )}
-        {editable && dirty && (
-          <Btn busy={busy === 'save'} onClick={() => act('save', save, 'تم حفظ التعديل')}>
-            حفظ التعديل
-          </Btn>
         )}
         {m.status === 'sent' && !m.replied && (
           <Btn
@@ -147,11 +129,6 @@ const MessageCard: React.FC<{ m: MessageRow; ctx: PageCtx }> = ({ m, ctx }) => {
           </Btn>
         )}
         {m.status === 'sent' && m.replied && <Pill tone="green">ردّ العميل {timeAgo(m.replied_at)}</Pill>}
-        {m.status === 'failed' && auto && (
-          <Btn variant="primary" busy={busy === 'send'} onClick={send}>
-            <RefreshCw className="w-3.5 h-3.5" /> إعادة المحاولة
-          </Btn>
-        )}
         {m.status === 'rejected' && (
           <Btn busy={busy === 'back'} onClick={() => act('back', () => api.patchMessage(m.id, { status: 'pending_approval' }))}>
             استعادة
@@ -172,7 +149,7 @@ export const ApprovalPage: React.FC<{ ctx: PageCtx }> = ({ ctx }) => {
     <div className="space-y-5">
       <PageHead
         title="اعتماد الرسائل"
-        subtitle="لا تُرسل أي رسالة قبل موافقتك"
+        subtitle="الإرسال يدوي: افتح المحادثة، أرسل، ثم اضغط «تم الإرسال»"
         actions={
           <Btn
             variant="dark"

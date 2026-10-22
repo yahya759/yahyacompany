@@ -44,7 +44,7 @@ export const N8nWorkflowsCard: React.FC<N8nWorkflowsCardProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">
-                حالة مسارات عمل n8n (Workflows Status)
+                حالة المهام (Jobs)
               </h3>
               <p className="text-[11px] text-slate-400">
                 المحرك الأوتوماتيكي لرصد المشاكل وتغذية قمع التحويل بالعملاء

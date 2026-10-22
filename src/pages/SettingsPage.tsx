@@ -96,12 +96,46 @@ const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, 
   </label>
 );
 
+const StatusPanel: React.FC = () => {
+  const [h, setH] = useState<Awaited<ReturnType<typeof api.health>> | null>(null);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    api.health().then(setH).catch((e) => setErr(e.message));
+  }, []);
+  const chip = (ok: boolean | undefined, label: string) => (
+    <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${ok ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
+      {ok ? '✓' : '✕'} {label}
+    </span>
+  );
+  return (
+    <Panel>
+      <h3 className="text-sm font-extrabold text-slate-900">حالة الاتصالات</h3>
+      <p className="text-[11px] text-slate-500 mt-0.5 mb-4">تُضبط المفاتيح كـ Secrets في Cloudflare، وليس من هنا</p>
+      {err ? (
+        <p className="text-xs text-rose-600">{err}</p>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {chip(h?.supabase, 'Supabase')}
+            {chip(h?.apify, 'Apify')}
+            {chip(h?.openrouter, 'OpenRouter')}
+          </div>
+          <p className="text-[11px] font-bold text-slate-500 mt-4 mb-2">النماذج بترتيب المحاولة ({h?.models?.length ?? 0})</p>
+          <ol className="text-[11px] text-slate-600 space-y-1 list-decimal pr-5" dir="ltr" style={{ textAlign: 'left' }}>
+            {(h?.models ?? []).map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ol>
+        </>
+      )}
+    </Panel>
+  );
+};
+
 export const SettingsPage: React.FC<{ ctx: PageCtx }> = ({ ctx }) => {
   const { data, refresh, toast } = ctx;
   const s = settingsMap(data);
-  const [llm, setLlm] = useState({ primary: '', fallback: '' });
   const [th, setTh] = useState<Record<string, number>>({});
-  const [ch, setCh] = useState<Record<string, any>>({});
   const [src, setSrc] = useState<Record<string, boolean>>({});
   const [sectors, setSectors] = useState<string[]>([]);
   const [markets, setMarkets] = useState<string[]>([]);
@@ -111,9 +145,7 @@ export const SettingsPage: React.FC<{ ctx: PageCtx }> = ({ ctx }) => {
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     if (hydrated || !data.settings.length) return;
-    setLlm({ primary: s.llm_model?.primary ?? '', fallback: s.llm_model?.fallback ?? '' });
     setTh(s.thresholds ?? {});
-    setCh(s.send_channels ?? {});
     setSrc(s.problem_sources ?? {});
     setSectors(Array.isArray(s.sectors) ? s.sectors : []);
     setMarkets(Array.isArray(s.markets) ? s.markets : []);
@@ -139,18 +171,9 @@ export const SettingsPage: React.FC<{ ctx: PageCtx }> = ({ ctx }) => {
 
   return (
     <div className="space-y-5">
-      <PageHead title="الإعدادات" subtitle="تُقرأ مباشرة من جدول settings داخل مسارات n8n" />
+      <PageHead title="الإعدادات" subtitle="تُحفظ في جدول settings وتُستخدم عند كل تشغيل" />
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-        <Section title="النموذج" desc="الأساسي والبديل عند الوصول للحد" onSave={save('llm_model', llm)}>
-          <div className="space-y-3">
-            <Field label="الأساسي">
-              <input className={inputCls} dir="ltr" value={llm.primary} onChange={(e) => setLlm({ ...llm, primary: e.target.value })} />
-            </Field>
-            <Field label="البديل (Fallback)">
-              <input className={inputCls} dir="ltr" value={llm.fallback} onChange={(e) => setLlm({ ...llm, fallback: e.target.value })} />
-            </Field>
-          </div>
-        </Section>
+        <StatusPanel />
 
         <Section title="الحدود" desc="الفلترة والمتابعة وطول الرسالة" onSave={save('thresholds', th)}>
           <div className="grid grid-cols-2 gap-3">
@@ -162,20 +185,11 @@ export const SettingsPage: React.FC<{ ctx: PageCtx }> = ({ ctx }) => {
           </div>
         </Section>
 
-        <Section title="قنوات الإرسال" desc="إنستجرام يدوي دائماً (نسخ الرسالة)" onSave={save('send_channels', ch)}>
-          <div className="space-y-2">
-            <Toggle label="إيميل (Gmail)" on={!!ch.email} onChange={(v) => setCh({ ...ch, email: v })} />
-            <Toggle label="تليجرام" on={!!ch.telegram} onChange={(v) => setCh({ ...ch, telegram: v })} />
-            <Toggle label="واتساب Business (يحتاج Template معتمد)" on={!!ch.whatsapp} onChange={(v) => setCh({ ...ch, whatsapp: v })} />
-            <Toggle label="إنستجرام — يدوي" on disabled onChange={() => {}} />
-          </div>
-        </Section>
-
-        <Section title="مصادر الرادار" desc="من أين يبحث Problem Radar" onSave={save('problem_sources', src)}>
+        <Section title="مصادر الرادار" desc="الافتراضي عند تشغيل رادار جديد" onSave={save('problem_sources', src)}>
           <div className="space-y-2">
             <Toggle label="Reddit" on={!!src.reddit} onChange={(v) => setSrc({ ...src, reddit: v })} />
-            <Toggle label="Tavily (بحث الويب)" on={!!src.tavily} onChange={(v) => setSrc({ ...src, tavily: v })} />
-            <Toggle label="مراجعات خرائط Google (Apify)" on={!!src.apify_google_maps_reviews} onChange={(v) => setSrc({ ...src, apify_google_maps_reviews: v })} />
+            <Toggle label="بحث Google" on={!!src.google_search} onChange={(v) => setSrc({ ...src, google_search: v })} />
+            <Toggle label="مراجعات خرائط Google" on={!!src.google_maps_reviews} onChange={(v) => setSrc({ ...src, google_maps_reviews: v })} />
           </div>
         </Section>
 

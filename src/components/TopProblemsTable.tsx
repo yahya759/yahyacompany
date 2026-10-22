@@ -79,10 +79,10 @@ export const TopProblemsTable: React.FC<TopProblemsTableProps> = ({
             <span className="text-[11px] font-semibold text-slate-600 hidden sm:inline">Facebook</span>
           </div>
         );
-      case 'tavily':
+      case 'google-search':
         return (
-          <div className="flex items-center gap-1.5" title="Tavily">
-            <div className="w-6 h-6 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center font-bold text-xs">W</div>
+          <div className="flex items-center gap-1.5" title="Google">
+            <div className="w-6 h-6 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center font-bold text-xs">G</div>
             <span className="text-[11px] font-semibold text-slate-600 hidden sm:inline">بحث الويب</span>
           </div>
         );

@@ -28,7 +28,7 @@ export const CHANNEL_LABELS: Record<string, string> = {
 
 export const SOURCE_LABELS: Record<string, string> = {
   reddit: 'Reddit',
-  tavily: 'بحث الويب',
+  'google-search': 'بحث Google',
   'google-maps': 'خرائط Google',
   facebook: 'Facebook',
   x: 'منصة X',
@@ -40,7 +40,6 @@ export const ACTION_LABELS: Record<JobAction, { ar: string; en: string; category
   build_solution: { ar: 'بناء الحل', en: 'Solution Builder', category: 'التحليل' },
   find_leads: { ar: 'البحث عن عملاء', en: 'Lead Finder', category: 'المبيعات' },
   write_message: { ar: 'كتابة الرسائل', en: 'Message Writer', category: 'التواصل' },
-  send_message: { ar: 'إرسال الرسائل', en: 'Send Message', category: 'التواصل' },
   write_followup: { ar: 'كتابة المتابعات', en: 'Follow-up Writer', category: 'التواصل' },
 };
 
@@ -73,7 +72,7 @@ export function mapProblems(d: DashboardData): Problem[] {
   return d.problems.map((p: ProblemRow) => {
     const sol = d.solutions.find((s) => s.problem_id === p.id);
     const src = (p.source || 'other').toLowerCase();
-    const source = (['reddit', 'tavily', 'google-maps', 'facebook', 'x'].includes(src) ? src : 'other') as Problem['source'];
+    const source = (['reddit', 'google-search', 'google-maps', 'facebook', 'x'].includes(src) ? src : 'other') as Problem['source'];
     const key = toSectorKey(p.sector);
     return {
       id: p.id,

@@ -1,0 +1,9 @@
+# Local dev only (npm run dev). In production set these in Cloudflare → Settings → Variables and Secrets.
+SUPABASE_URL="https://qrthnfmuqsuyvynrpxme.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY=""
+APIFY_TOKEN=""
+OPENROUTER_API_KEY=""
+# optional: comma-separated priority list; empty = auto-pick current free models
+OPENROUTER_MODELS=""
+# optional: hard spending cap per Apify run (USD), default 0.5
+APIFY_MAX_COST_USD="0.5"

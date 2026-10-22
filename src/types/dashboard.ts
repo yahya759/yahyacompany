@@ -8,7 +8,7 @@ export interface Problem {
   summary: string;
   sector: string;
   sectorKey: ProblemSector;
-  source: 'reddit' | 'x' | 'google-maps' | 'facebook' | 'tavily' | 'other';
+  source: 'reddit' | 'x' | 'google-maps' | 'facebook' | 'google-search' | 'other';
   sourceName: string;
   sourceUrl?: string;
   status?: string;

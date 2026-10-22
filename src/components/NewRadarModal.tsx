@@ -14,7 +14,7 @@ export const NewRadarModal: React.FC<NewRadarModalProps> = ({
 }) => {
   const [keyword, setKeyword] = useState('');
   const [sector, setSector] = useState('real-estate');
-  const [selectedSources, setSelectedSources] = useState<string[]>(['reddit', 'tavily', 'google-maps']);
+  const [selectedSources, setSelectedSources] = useState<string[]>(['reddit', 'google-search', 'google-maps']);
   const [isScanning, setIsScanning] = useState(false);
 
   const toggleSource = (src: string) => {
@@ -102,10 +102,9 @@ export const NewRadarModal: React.FC<NewRadarModalProps> = ({
             <div className="grid grid-cols-2 gap-2 text-xs">
               {[
                 { id: 'reddit', label: 'Reddit (مجتمعات الأعمال)' },
-                { id: 'tavily', label: 'Tavily (بحث الويب)' },
+                { id: 'google-search', label: 'بحث Google (شكاوى ومناقشات)' },
                 { id: 'google-maps', label: 'خرائط Google (مراجعات الشركات)' },
-                { id: 'facebook', label: 'مجموعات فيسبوك (Apify)' },
-              ].map((src) => (
+                ].map((src) => (
                 <button
                   type="button"
                   key={src.id}
@@ -128,7 +127,7 @@ export const NewRadarModal: React.FC<NewRadarModalProps> = ({
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 text-[11px] text-slate-500 flex items-center gap-2">
             <Globe className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
-              يُرسَل الأمر إلى n8n ويظهر التقدّم في «مسارات العمل»، والنتائج تنزل في رادار المشاكل وفرز العملاء المحتملين تلقائياً.
+              يشتغل الرادار بالخلفية عبر Apify ويظهر التقدّم في «المهام»، والنتائج تنزل في رادار المشاكل وفرز العملاء المحتملين تلقائياً.
             </span>
           </div>
 

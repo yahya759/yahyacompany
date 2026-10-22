@@ -2,6 +2,8 @@ import React from 'react';
 import { N8nWorkflowsCard } from '../components/N8nWorkflowsCard';
 import { Empty, PageHead, Panel, Pill } from '../components/ui';
 import { ACTION_LABELS, mapWorkflows, timeAgo } from '../utils/mappers';
+import { api } from '../lib/api';
+import { Btn } from '../components/ui';
 import type { N8nWorkflow } from '../types/dashboard';
 import type { PageCtx } from './types';
 
@@ -15,7 +17,7 @@ export const WorkflowsPage: React.FC<{
   const label = { running: 'قيد التنفيذ', done: 'اكتمل', failed: 'فشل' } as const;
   return (
     <div className="space-y-5">
-      <PageHead title="مسارات العمل n8n" subtitle="كل تشغيل يُسجَّل في جدول jobs" />
+      <PageHead title="المهام" subtitle="كل تشغيل يُسجَّل في جدول jobs ويُنفَّذ بالخلفية" />
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
         <div className="xl:col-span-5">
           <N8nWorkflowsCard workflows={mapWorkflows(data.jobs)} onTriggerWorkflow={onTrigger} onOpenLogs={onOpenLogs} />
@@ -50,6 +52,11 @@ export const WorkflowsPage: React.FC<{
                         </td>
                         <td className="py-2.5 px-2 text-slate-500 max-w-xs">
                           {j.error ? <span className="text-rose-600">{j.error}</span> : <span dir="ltr" className="text-[11px]">{Object.keys(j.params || {}).length ? JSON.stringify(j.params).slice(0, 80) : '—'}</span>}
+                          {j.status === 'running' && (
+                            <Btn variant="danger" className="mr-2 !py-1" onClick={async () => { try { await api.cancelJob(j.id); await ctx.refresh(); } catch (e: any) { ctx.toast(`فشل: ${e.message}`); } }}>
+                              إلغاء
+                            </Btn>
+                          )}
                         </td>
                       </tr>
                     ))}

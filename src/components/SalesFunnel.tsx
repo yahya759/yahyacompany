@@ -48,7 +48,7 @@ export const SalesFunnel: React.FC<SalesFunnelProps> = ({ stages }) => {
             </h3>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            متابعة حركة الفرص من الرصد الأولي عبر n8n حتى تحويلها إلى عقود بيع فعلية
+            متابعة حركة الفرص من الرصد الأولي حتى تحويلها إلى عقود بيع فعلية
           </p>
         </div>
 

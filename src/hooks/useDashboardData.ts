@@ -8,6 +8,7 @@ export function useDashboardData(enabled: boolean) {
   const [loading, setLoading] = useState(true);
   const timer = useRef<number | undefined>(undefined);
   const alive = useRef(true);
+  const lastTick = useRef(0);
 
   const load = useCallback(async () => {
     try {
@@ -30,6 +31,11 @@ export function useDashboardData(enabled: boolean) {
     const tick = async () => {
       const d = await load();
       const running = d?.jobs.some((j) => j.status === 'running');
+      // The cron advances jobs every minute; this just makes progress feel faster while someone is watching.
+      if (running && !document.hidden && Date.now() - lastTick.current > 15000) {
+        lastTick.current = Date.now();
+        api.tick().catch(() => {});
+      }
       timer.current = window.setTimeout(tick, document.hidden ? 30000 : running ? 3000 : 12000);
     };
     tick();

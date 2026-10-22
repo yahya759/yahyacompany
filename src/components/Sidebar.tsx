@@ -45,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     { id: 'demos', label: 'العروض التوضيحية', labelEn: 'Demos', icon: MonitorPlay },
     { id: 'analytics', label: 'التحليلات والمبيعات', labelEn: 'Analytics', icon: BarChart3 },
-    { id: 'workflows', label: 'مسارات العمل n8n', labelEn: 'Workflows', icon: GitBranch },
+    { id: 'workflows', label: 'المهام', labelEn: 'Workflows', icon: GitBranch },
   ];
 
   return (

@@ -72,10 +72,10 @@ export const PendingMessagesCard: React.FC<PendingMessagesCardProps> = ({
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <h4 className="text-sm font-bold text-slate-800">
-              رائع! تم اعتماد وإرسال جميع الرسائل لليوم 🎉
+              رائع! لا توجد رسائل بانتظارك 🎉
             </h4>
             <p className="text-xs text-slate-500 mt-1">
-              سيقوم رادار n8n باستخراج عملاء ومسودات جديدة تلقائياً خلال الفحص القادم.
+              شغّل الرادار ثم ابحث عن عملاء، وبعدها تظهر هنا عملاء ومسودات جديدة تلقائياً خلال الفحص القادم.
             </p>
           </div>
         ) : (
@@ -194,7 +194,7 @@ export const PendingMessagesCard: React.FC<PendingMessagesCardProps> = ({
             className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/25 transition-all flex items-center gap-2 cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
-            <span>إرسال الآن</span>
+            <span>فتح المحادثة + نسخ</span>
           </button>
         </div>
       )}

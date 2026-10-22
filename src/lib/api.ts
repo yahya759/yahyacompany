@@ -34,7 +34,7 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
 const json = (method: string, body: unknown) => ({ method, body: JSON.stringify(body) });
 
 export const api = {
-  health: () => req<{ ok: boolean; supabase: boolean; n8n: boolean; auth: boolean }>('/api/health'),
+  health: () => req<{ ok: boolean; supabase: boolean; apify: boolean; openrouter: boolean; models: string[] }>('/api/health'),
   data: async (): Promise<DashboardData> => {
     const d: any = await req<any>('/api/data');
     const keys = ['problems', 'solutions', 'leads', 'messages', 'jobs', 'settings'];
@@ -48,7 +48,8 @@ export const api = {
   runAction: (action: JobAction, params: Record<string, unknown> = {}) =>
     req<{ job_id?: string; [k: string]: any }>('/api/actions', json('POST', { action, params })),
   patchMessage: (id: string, patch: Record<string, unknown>) => req(`/api/messages/${id}`, json('PATCH', patch)),
-  sendMessage: (id: string) => req(`/api/messages/${id}/send`, { method: 'POST' }),
+  tick: () => req<{ processed: number }>('/api/tick', { method: 'POST' }),
+  cancelJob: (id: string) => req(`/api/jobs/${id}/cancel`, { method: 'POST' }),
   markSent: (id: string) => req(`/api/messages/${id}/mark-sent`, { method: 'POST' }),
   patchLead: (id: string, status: string) => req(`/api/leads/${id}`, json('PATCH', { status })),
   patchProblem: (id: string, status: string) => req(`/api/problems/${id}`, json('PATCH', { status })),

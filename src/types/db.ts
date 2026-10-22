@@ -3,7 +3,6 @@ export type JobAction =
   | 'build_solution'
   | 'find_leads'
   | 'write_message'
-  | 'send_message'
   | 'write_followup';
 
 export interface JobRow {

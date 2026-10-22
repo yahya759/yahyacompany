@@ -7,27 +7,24 @@
  *
  * Env vars (Pages → Settings → Environment variables):
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
- *   N8N_WEBHOOK_URL, N8N_WEBHOOK_HEADER (default x-api-key), N8N_WEBHOOK_SECRET
+ *   APIFY_TOKEN, OPENROUTER_API_KEY, OPENROUTER_MODELS (optional), APIFY_MAX_COST_USD (optional)
  */
 
 type Env = {
   SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
-  N8N_WEBHOOK_URL?: string;
-  N8N_WEBHOOK_HEADER?: string;
-  N8N_WEBHOOK_SECRET?: string;
+  APIFY_TOKEN?: string;
+  APIFY_MAX_COST_USD?: string;
+  OPENROUTER_API_KEY?: string;
+  OPENROUTER_MODELS?: string;
 };
+
+import { runTick } from '../../worker/pipeline';
+import { resolveModels } from '../../worker/llm';
 
 type Ctx = { request: Request; env: Env };
 
-const ACTIONS = new Set([
-  'find_problems',
-  'build_solution',
-  'find_leads',
-  'write_message',
-  'send_message',
-  'write_followup',
-]);
+const ACTIONS = new Set(['find_problems', 'build_solution', 'find_leads', 'write_message', 'write_followup']);
 
 const corsHeaders = (): Record<string, string> => ({
   'access-control-allow-origin': '*',
@@ -72,27 +69,6 @@ function supabase(env: Env) {
   };
 }
 
-const callN8n = async (env: Env, action: string, params: Record<string, unknown>) => {
-  if (!env.N8N_WEBHOOK_URL) throw Object.assign(new Error('N8N_WEBHOOK_URL غير مضبوط'), { status: 503 });
-  const res = await fetch(env.N8N_WEBHOOK_URL, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      [env.N8N_WEBHOOK_HEADER || 'x-api-key']: env.N8N_WEBHOOK_SECRET || '',
-    },
-    body: JSON.stringify({ action, params }),
-  });
-  const text = await res.text();
-  let body: any = {};
-  try {
-    body = text ? JSON.parse(text) : {};
-  } catch {
-    body = { raw: text };
-  }
-  if (!res.ok) throw Object.assign(new Error(`n8n رد بـ ${res.status}: ${text.slice(0, 200)}`), { status: 502 });
-  return body;
-};
-
 const first = (rows: any) => (Array.isArray(rows) ? rows[0] : rows);
 
 export const onRequest = async (ctx: Ctx): Promise<Response> => {
@@ -110,14 +86,21 @@ export const onRequest = async (ctx: Ctx): Promise<Response> => {
   };
 
   try {
-    if (path === '/health' && method === 'GET')
+    if (path === '/health' && method === 'GET') {
+      let models: string[] = [];
+      try {
+        models = await resolveModels(env as any);
+      } catch {}
       return json({
         ok: true,
         supabase: !!(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY),
-        n8n: !!env.N8N_WEBHOOK_URL,
+        apify: !!env.APIFY_TOKEN,
+        openrouter: !!env.OPENROUTER_API_KEY,
+        models,
         auth: false,
-        runtime: 'cloudflare-pages',
+        runtime: 'cloudflare-workers',
       });
+    }
 
     if (path === '/data' && method === 'GET') {
       const q = (table: string, limit: number, order = 'created_at') =>
@@ -144,10 +127,30 @@ export const onRequest = async (ctx: Ctx): Promise<Response> => {
     if (path === '/actions' && method === 'POST') {
       const { action, params = {} } = await readBody();
       if (!ACTIONS.has(action)) return fail('action غير معروف', 400);
-      return json(await callN8n(env, action, params));
+      const row = first(
+        await supabase(env)('jobs', {
+          method: 'POST',
+          body: JSON.stringify({ action, params, status: 'running' }),
+        }),
+      );
+      return json({ job_id: row?.id });
     }
 
-    const msg = path.match(/^\/messages\/([^/]+)(\/send|\/mark-sent)?$/);
+    // Advance running jobs now (the cron trigger also does this every minute).
+    if (path === '/tick' && method === 'POST') return json(await runTick(env as any));
+
+    const jobCancel = path.match(/^\/jobs\/([^/]+)\/cancel$/);
+    if (jobCancel && method === 'POST') {
+      const row = first(
+        await supabase(env)(`jobs?id=eq.${encodeURIComponent(decodeURIComponent(jobCancel[1]))}&status=eq.running`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'failed', error: 'أُلغيت يدوياً', finished_at: new Date().toISOString(), locked_until: null }),
+        }),
+      );
+      return row ? json(row) : fail('المهمة غير موجودة أو انتهت', 404);
+    }
+
+    const msg = path.match(/^\/messages\/([^/]+)(\/mark-sent)?$/);
     if (msg) {
       const id = encodeURIComponent(decodeURIComponent(msg[1]));
       const sub = msg[2];
@@ -162,16 +165,6 @@ export const onRequest = async (ctx: Ctx): Promise<Response> => {
         if (!Object.keys(patch).length) return fail('لا يوجد ما يُحدَّث', 400);
         const row = first(await supabase(env)(`messages?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(patch) }));
         return row ? json(row) : fail('الرسالة غير موجودة', 404);
-      }
-
-      if (sub === '/send' && method === 'POST') {
-        const m = first(await supabase(env)(`messages?id=eq.${id}&select=id,status,channel`));
-        if (!m) return fail('الرسالة غير موجودة', 404);
-        if (m.status === 'sent') return fail('الرسالة أُرسلت مسبقاً', 409);
-        if (m.channel === 'instagram' || m.channel === 'other')
-          return fail('هذه القناة يدوية: انسخ الرسالة وأرسلها بنفسك ثم علّمها كمُرسلة', 400);
-        await supabase(env)(`messages?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'approved' }) });
-        return json(await callN8n(env, 'send_message', { message_id: m.id }));
       }
 
       if (sub === '/mark-sent' && method === 'POST') {

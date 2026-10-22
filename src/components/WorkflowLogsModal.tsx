@@ -18,7 +18,7 @@ export const WorkflowLogsModal: React.FC<WorkflowLogsModalProps> = ({
   const samplePayload = {
     workflow_id: workflow.id,
     workflow_name: workflow.name,
-    environment: 'production-cloud-n8n',
+    environment: 'cloudflare-workers',
     status: 'ACTIVE_LISTENING',
     last_trigger_timestamp: new Date().toISOString(),
     metrics: {
@@ -52,7 +52,7 @@ export const WorkflowLogsModal: React.FC<WorkflowLogsModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-bold text-white font-mono">
-                n8n_execution_logs: {workflow.id}
+                job_logs: {workflow.id}
               </h3>
               <p className="text-[11px] text-slate-400">{workflow.name}</p>
             </div>
