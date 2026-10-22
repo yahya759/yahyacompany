@@ -100,6 +100,8 @@ globalThis.fetch = (async (input: any, init: any = {}) => {
           { title: 'Cafe Noor', url: 'https://maps/noor', phoneUnformatted: '+966500000001', placeId: 'p1', categoryName: 'مقهى', totalScore: 3.9, reviewsCount: 120, address: 'Riyadh',
             reviews: [{ text: 'الطلب تأخر ساعة ولم يتصل بنا أحد للتأكيد', stars: 1 }, { text: 'ممتاز جداً', stars: 5 }] },
           { title: 'Clinic Salam', website: 'https://salam.test', placeId: 'p2', categoryName: 'عيادة', totalScore: 4.5, reviewsCount: 30, address: 'Riyadh' },
+          { title: 'Low Cafe', phoneUnformatted: '+966500000009', placeId: 'p9', website: 'https://low.test', categoryName: 'مقهى', totalScore: 3.2, reviewsCount: 80, address: 'Riyadh',
+            reviews: [{ text: 'الخدمة بطيئة جداً ولا أحد يرد على الهاتف أبداً', stars: 1 }] },
           { title: 'Closed Place', permanentlyClosed: true, phone: '+966500000003', placeId: 'p3' },
           { title: 'No Contact', placeId: 'p4' },
         ]);
@@ -172,7 +174,7 @@ runs.clear();
 job('find_leads', { problem_id: pid });
 await drain();
 ok(last().status === 'done', `leads job done (${last().status} ${last().error || ''})`);
-ok(T.leads.length === 2, `2 valid leads (closed + no-contact skipped): ${T.leads.length}`);
+ok(T.leads.length === 3, `3 valid leads (closed + no-contact skipped): ${T.leads.length}`);
 ok(T.leads.find((l) => l.name === 'Cafe Noor')?.contact_channel === 'whatsapp' && T.leads.find((l) => l.name === 'Clinic Salam')?.contact_channel === 'other', 'contact channels derived from data');
 ok(T.problems[0].status === 'leads_found', 'problem marked leads_found');
 
@@ -187,6 +189,34 @@ ok(T.messages.length === 2 && T.messages[1].type === 'followup' && T.messages[1]
 job('write_followup', {});
 await drain();
 ok(T.messages.length === 2, 'no second follow-up while one is waiting');
+
+// --- discovery (no LLM)
+T.leads.length = 0;
+runs.clear();
+job('discover_leads', { mode: 'no_website', market: 'gulf' });
+await drain();
+ok(last().status === 'done' && T.leads.length === 1, `no_website: only phone+no-site lead kept (${T.leads.length}) ${last().error || ''}`);
+ok(T.leads[0]?.name === 'Cafe Noor' && T.leads[0].gap_found.includes('لا يملك موقعاً') && T.leads[0].contact_channel === 'whatsapp' && !T.leads[0].problem_id, 'no_website lead has gap + whatsapp, no problem');
+const noWebsiteInput = [...runs.values()].length;
+ok(noWebsiteInput === 1, 'one Apify run for discovery');
+T.leads.length = 0;
+runs.clear();
+job('discover_leads', { mode: 'low_rating', market: 'arabic' });
+await drain();
+ok(last().status === 'done' && T.leads.length === 1 && T.leads[0].name === 'Low Cafe', `low_rating: only <=3.8 stars kept (${T.leads.map((l) => l.name)})`);
+ok(T.leads[0]?.gap_found.includes('3.2') && T.leads[0].gap_found.includes('من شكاوى العملاء'), 'low_rating gap quotes a real complaint');
+ok(T.leads[0]?.fit_score >= 60 && T.leads[0].fit_score <= 95, `fit score heuristic (${T.leads[0]?.fit_score})`);
+
+// --- trends radar (auto queries, no keywords)
+runs.clear();
+const probBefore = T.problems.length;
+job('find_problems', { mode: 'trends', market: 'gulf' });
+await runTick(env as any);
+const trendActors = [...runs.values()].map((r) => r.actor).sort().join(',');
+ok(trendActors === 'apify~google-search-scraper,trudax~reddit-scraper-lite', `trends uses web+reddit only: ${trendActors}`);
+await drain();
+ok(last().status === 'done' && last().result.analyzed >= 0, `trends job done (${last().status} ${last().error || ''})`);
+void probBefore;
 
 // --- lock
 job('build_solution', { problem_id: T.problems[1].id });

@@ -18,6 +18,7 @@ import { NewRadarModal } from './components/NewRadarModal';
 import { WorkflowLogsModal } from './components/WorkflowLogsModal';
 import { Btn, copyText } from './components/ui';
 import { RadarPage } from './pages/RadarPage';
+import { DiscoverPage } from './pages/DiscoverPage';
 import { SolutionsPage } from './pages/SolutionsPage';
 import { LeadsPage } from './pages/LeadsPage';
 import { ApprovalPage } from './pages/ApprovalPage';
@@ -189,6 +190,7 @@ export default function App() {
 
   const page = {
     overview,
+    discover: <DiscoverPage ctx={ctx} />,
     radar: <RadarPage ctx={ctx} onNewRadar={() => setIsNewRadarOpen(true)} />,
     solutions: <SolutionsPage ctx={ctx} />,
     leads: <LeadsPage ctx={ctx} />,

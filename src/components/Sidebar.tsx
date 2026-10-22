@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   LayoutDashboard,
+  Compass,
   Radar,
   Lightbulb,
   Users,
@@ -33,6 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const navItems = [
     { id: 'overview', label: 'نظرة عامة', labelEn: 'Overview', icon: LayoutDashboard },
+    { id: 'discover', label: 'اكتشاف تلقائي', labelEn: 'Discover', icon: Compass },
     { id: 'radar', label: 'رادار المشاكل', labelEn: 'Problem Radar', icon: Radar },
     { id: 'solutions', label: 'الحلول الذكية', labelEn: 'Solutions', icon: Lightbulb },
     { id: 'leads', label: 'العملاء المحتملون', labelEn: 'Leads', icon: Users },

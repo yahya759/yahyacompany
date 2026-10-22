@@ -33,6 +33,33 @@ const SECTOR_QUERY: Record<string, string> = {
   ecommerce: 'مشاكل تأكيد الطلبات والتوصيل في المتاجر الإلكترونية',
 };
 
+const CITIES: Record<string, string[]> = {
+  gulf: ['Riyadh, Saudi Arabia', 'Jeddah, Saudi Arabia', 'Dammam, Saudi Arabia', 'Dubai, UAE', 'Doha, Qatar', 'Kuwait City, Kuwait'],
+  arabic: ['Amman, Jordan', 'Cairo, Egypt', 'Beirut, Lebanon', 'Casablanca, Morocco', 'Tunis, Tunisia'],
+  local: ['Nablus, Palestine', 'Ramallah, Palestine', 'Hebron, Palestine', 'Gaza, Palestine'],
+};
+const DISCOVER_TYPES = ['مطعم', 'عيادة أسنان', 'صالون تجميل', 'مركز تجميل', 'مركز لياقة', 'مكتب عقارات', 'مدرسة خاصة', 'محل ملابس', 'مغسلة سيارات', 'مركز تدريب'];
+const trendQueries = (y: number) => [
+  `أكبر مشاكل الأتمتة والذكاء الاصطناعي في الشركات العربية ${y}`,
+  `تحديات تطبيق الذكاء الاصطناعي في الشرق الأوسط ${y}`,
+  'مشاكل الشركات الصغيرة في السعودية التي يمكن حلها بالأتمتة',
+  `AI automation challenges Arab SMEs ${y}`,
+  `Middle East small business pain points automation ${y}`,
+  'مشاكل واتساب للأعمال وخدمة العملاء في الشركات العربية',
+  'لماذا تفشل مشاريع الذكاء الاصطناعي في الشركات العربية',
+  'أكثر المهام المتكررة التي يريد أصحاب المتاجر العرب أتمتتها',
+  `GCC businesses manual processes automation demand ${y}`,
+  'مشاكل تأكيد الطلبات والدفع عند الاستلام في المتاجر العربية',
+];
+const pickRandom = <T>(arr: T[], n: number): T[] => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, n);
+};
+
 const clamp = (n: any, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, Math.round(Number(n) || 0)));
 const words = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
 const isObj = (v: any) => v && typeof v === 'object';
@@ -108,6 +135,8 @@ async function advance(env: Env, sb: Db, job: Job): Promise<Step> {
       return buildSolution(env, sb, job);
     case 'find_leads':
       return advanceLeads(env, sb, job);
+    case 'discover_leads':
+      return advanceDiscover(env, sb, job);
     case 'write_message':
       return writeMessage(env, sb, job);
     case 'write_followup':
@@ -149,10 +178,14 @@ async function startRadar(env: Env, sb: Db, job: Job): Promise<Step> {
   const p = job.params || {};
   const s = await loadSettings(sb);
   const sector = SECTORS.includes(p.sector) ? p.sector : undefined;
+  const trends = p.mode === 'trends';
   let keywords: string[] = (Array.isArray(p.keywords) ? p.keywords : []).map(String).filter(Boolean);
+  if (trends && !keywords.length) keywords = pickRandom(trendQueries(new Date().getFullYear()), 4);
   if (!keywords.length) keywords = s.keywords.length ? s.keywords : [sector ? SECTOR_QUERY[sector] : 'مشاكل أصحاب الأعمال الصغيرة مع الحجوزات والطلبات'];
-  keywords = keywords.slice(0, 3);
-  const sources: string[] = Array.isArray(p.sources) && p.sources.length ? p.sources : ['reddit', 'google-search', 'google-maps'];
+  keywords = keywords.slice(0, trends ? 4 : 3);
+  const sources: string[] = trends
+    ? ['reddit', 'google-search']
+    : Array.isArray(p.sources) && p.sources.length ? p.sources : ['reddit', 'google-search', 'google-maps'];
   const market = ['gulf', 'arabic', 'local'].includes(p.market) ? p.market : 'local';
   const cities = ((Array.isArray(p.markets) && p.markets.length ? p.markets : s.markets) as string[]).slice(0, 1);
   const city = cities[0] || MARKET_CITY[market];
@@ -167,9 +200,10 @@ async function startRadar(env: Env, sb: Db, job: Job): Promise<Step> {
     }
   };
 
-  if (sources.includes('reddit'))
+  const redditQueries = trends ? keywords.filter((k) => /[a-z]/i.test(k)) : keywords;
+  if (sources.includes('reddit') && redditQueries.length)
     await tryStart('reddit', 'trudax/reddit-scraper-lite', {
-      searches: keywords, searchPosts: true, searchComments: false, skipComments: true, skipUserPosts: true,
+      searches: redditQueries, searchPosts: true, searchComments: false, skipComments: true, skipUserPosts: true,
       sort: 'relevance', time: 'year', maxItems: 30, maxPostCount: 15, proxy: { useApifyProxy: true },
     }, 30);
   if (sources.includes('google-search'))
@@ -185,7 +219,7 @@ async function startRadar(env: Env, sb: Db, job: Job): Promise<Step> {
   if (!runs.length) throw new Error(`تعذّر تشغيل أي مصدر — ${errors.join(' | ')}`.slice(0, 480));
   return {
     done: false,
-    state: { phase: 'scraping', startedAt: new Date().toISOString(), runs, errors, ctx: { market, sector: sector || null, keywords } },
+    state: { phase: 'scraping', startedAt: new Date().toISOString(), runs, errors, ctx: { market, sector: sector || null, keywords, mode: trends ? 'trends' : 'problems' } },
   };
 }
 
@@ -251,8 +285,12 @@ async function analyzeRadar(env: Env, sb: Db, job: Job, st: any): Promise<Step> 
   while (st.idx < cands.length && Date.now() - t0 < 100_000) {
     const batch = cands.slice(st.idx, st.idx + 8);
     const prompt = batch.map((c, i) => `#${i} [${c.source}]\n${c.text}`).join('\n\n---\n\n');
+    const trendsMode = st.ctx.mode === 'trends';
     const { data, model } = await chatJSON<{ results: any[] }>(
       env,
+      (trendsMode
+        ? `أنت محلل سوق الأتمتة والذكاء الاصطناعي في العالم العربي. المقاطع التالية نتائج بحث (مقالات وتقارير ونقاشات) عن هذا السوق. استخرج منها مشاكل أو عوائق أو احتياجات حقيقية تواجه الشركات وأصحاب الأعمال العرب ويمكن تحويلها إلى منتج أو خدمة أتمتة أو ذكاء اصطناعي تُباع لهم. تجاهل الأخبار العامة والإعلانات والمحتوى التسويقي الذي لا يذكر مشكلة محددة. problem_summary يصف المشكلة نفسها وليس عنوان المقال.\n`
+        : '') +
       `أنت محلل أسواق عربي. تقرأ منشورات وتقييمات وعناوين بحث وتستخرج منها مشاكل أعمال حقيقية يمكن حلها بأتمتة أو أداة برمجية بسيطة (واتساب، حجوزات، جداول، تذكيرات، متابعة عملاء)، ويكون صاحب العمل هو من يدفع للحل.
 أعد JSON فقط بهذا الشكل بدون أي نص آخر:
 {"results":[{"i":0,"is_problem":true,"problem_summary":"المشكلة بجملة أو جملتين بالعربية (لا تنقل النص حرفياً)","sector":"real-estate|ecommerce|fnb|healthcare|construction|services","who_suffers":"من يتضرر","pays_for_solution":true,"automation_fit":"high|medium|low","score":0}]}
@@ -448,6 +486,79 @@ async function scoreLeads(env: Env, sb: Db, job: Job, st: any): Promise<Step> {
   return { done: false, state: st };
 }
 
+/* ───────────── 3b) discover_leads: businesses with no website / weak rating (no LLM, so no rate-limit cost) ───────────── */
+
+async function advanceDiscover(env: Env, sb: Db, job: Job): Promise<Step> {
+  const st = job.result;
+  if (!st?.phase) return startDiscover(env, sb, job);
+  const finished = await pollRuns(env, st.runs);
+  const waited = Date.now() - new Date(st.startedAt).getTime();
+  if (!finished && waited < 12 * 60_000) return { done: false, state: st };
+  return collectDiscover(env, sb, job, st);
+}
+
+async function startDiscover(env: Env, sb: Db, job: Job): Promise<Step> {
+  const p = job.params || {};
+  const mode = p.mode === 'low_rating' ? 'low_rating' : 'no_website';
+  const market = ['gulf', 'arabic', 'local'].includes(p.market) ? p.market : 'gulf';
+  const s = await loadSettings(sb);
+  const sector = SECTORS.includes(p.sector) ? p.sector : undefined;
+  const types = Array.isArray(p.business_types) && p.business_types.length
+    ? p.business_types.map(String).slice(0, 3)
+    : sector ? [SECTOR_BUSINESS[sector]] : pickRandom(DISCOVER_TYPES, 3);
+  const city = s.markets.length ? pickRandom(s.markets, 1)[0] : pickRandom(CITIES[market], 1)[0];
+  const input: Record<string, unknown> = {
+    searchStringsArray: types, locationQuery: city, language: 'ar', maxImages: 0,
+    maxCrawledPlacesPerSearch: mode === 'low_rating' ? 30 : 20,
+    maxReviews: mode === 'low_rating' ? 8 : 0,
+  };
+  if (mode === 'no_website') input.website = 'withoutWebsite';
+  const run = await startRun(env, 'compass/crawler-google-places', input);
+  return { done: false, state: { phase: 'scraping', startedAt: new Date().toISOString(), runs: [{ source: 'google-maps', ...run }], ctx: { mode, market, types, city } } };
+}
+
+async function collectDiscover(env: Env, sb: Db, job: Job, st: any): Promise<Step> {
+  const run: RunRef = st.runs[0];
+  if (run.status !== RUN_OK) throw new Error(`فشل تشغيل خرائط Google (${run.status || 'لم ينتهِ'})`);
+  const items = await getItems(env, run.datasetId, 200);
+  const th = (await loadSettings(sb)).th;
+  const existing = await sb.select('leads', 'select=place_id,name&limit=3000');
+  const ids = new Set(existing.map((x) => x.place_id).filter(Boolean));
+  const names = new Set(existing.map((x) => String(x.name).toLowerCase()));
+  const seen = new Set<string>();
+  const leads: any[] = [];
+  for (const it of items) {
+    const name = String(it.title || '').trim();
+    const phone = String(it.phoneUnformatted || it.phone || '').trim();
+    const website = String(it.website || '').trim();
+    const score = Number(it.totalScore);
+    const reviews = Number(it.reviewsCount) || 0;
+    if (!name || it.permanentlyClosed || !phone) continue; // we contact by phone/WhatsApp
+    if ((it.placeId && ids.has(it.placeId)) || names.has(name.toLowerCase()) || seen.has(name.toLowerCase())) continue;
+    let gap: string;
+    let fit: number;
+    if (st.ctx.mode === 'no_website') {
+      if (website) continue;
+      gap = `لا يملك موقعاً إلكترونياً${reviews ? ` رغم أن عنده ${reviews} مراجعة على خرائط Google` : ''}`;
+      fit = 70 + (reviews >= 50 ? 10 : 0) + (score >= 4 ? 10 : 0);
+    } else {
+      if (!(score > 0) || score > 3.8 || reviews < 5) continue;
+      const complaint = (it.reviews || []).find((r: any) => Number(r.stars) <= 3 && String(r.text || '').trim().length >= 15);
+      gap = `تقييمه ${score} من 5 (${reviews} مراجعة)` + (complaint ? ` — من شكاوى العملاء: «${String(complaint.text).trim().slice(0, 120)}»` : '');
+      fit = 60 + (reviews >= 50 ? 15 : 0) + (score <= 3.3 ? 15 : 0);
+    }
+    seen.add(name.toLowerCase());
+    leads.push({
+      name, address: it.address || null, city: it.city || st.ctx.city, website: website || null, phone,
+      place_id: it.placeId || null, contact_channel: 'whatsapp', contact_value: phone,
+      gap_found: gap.slice(0, 300), fit_score: Math.min(95, fit), job_id: job.id,
+    });
+  }
+  const qualified = leads.filter((l) => l.fit_score >= th.lead_fit_min).slice(0, 40);
+  const inserted = await sb.insertSkipDuplicates('leads', qualified);
+  return { done: true, result: { found: inserted.length, scanned: items.length, mode: st.ctx.mode, city: st.ctx.city, types: st.ctx.types } };
+}
+
 /* ───────────────────────── 4) write_message ───────────────────────── */
 
 async function composeMessage(env: Env, th: Record<string, number>, ctx: { lead: any; problem?: any; solution?: any; followupOf?: string }) {
@@ -455,7 +566,7 @@ async function composeMessage(env: Env, th: Record<string, number>, ctx: { lead:
   const { lead, problem, solution, followupOf } = ctx;
   const system = followupOf
     ? `اكتب رسالة متابعة قصيرة ولطيفة بالعربية تبني على الرسالة الأولى دون تكرارها ولا إلحاح، وتنتهي بسؤال خفيف. أقل من ${max} كلمة.`
-    : `اكتب رسالة تواصل أولى بالعربية البسيطة المهذبة باسم "يحيى" (مطوّر حلول أتمتة). الترتيب إلزامي: تبدأ بالفجوة التي لاحظناها عند النشاط، ثم المشكلة، ثم الحل المقترح، ثم سؤال خفيف في الآخر. أقل من ${max} كلمة. بدون روابط، بدون مبالغة، ولا تذكر نتائج أو أرقاماً أو عملاء سابقين.`;
+    : `اكتب رسالة تواصل أولى بالعربية البسيطة المهذبة باسم "يحيى" (مطوّر حلول أتمتة ومواقع). الترتيب إلزامي: تبدأ بالفجوة التي لاحظناها عند النشاط، ثم المشكلة، ثم الحل المقترح، ثم سؤال خفيف في الآخر. إن لم تُعطَ مشكلة أو حلاً محدداً فاقترح بجملة واحدة الحل المناسب للفجوة نفسها (مثل موقع بسيط أو نظام حجز أو رد آلي على واتساب) دون مبالغة. أقل من ${max} كلمة. بدون روابط، بدون مبالغة، ولا تذكر نتائج أو أرقاماً أو عملاء سابقين.`;
   const { data } = await chatJSON<{ message: string; subject?: string }>(
     env,
     `${system}\nأعد JSON فقط: {"message":"نص الرسالة","subject":"عنوان قصير للإيميل"}`,

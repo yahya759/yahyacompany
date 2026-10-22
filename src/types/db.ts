@@ -2,6 +2,7 @@ export type JobAction =
   | 'find_problems'
   | 'build_solution'
   | 'find_leads'
+  | 'discover_leads'
   | 'write_message'
   | 'write_followup';
 

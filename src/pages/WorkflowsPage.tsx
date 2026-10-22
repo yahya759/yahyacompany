@@ -16,6 +16,7 @@ const jobSummary = (j: any): string => {
     const src = r.sources ? Object.entries(r.sources).map(([k, v]: any) => `${k}: ${v.usable}/${v.fetched}`).join(' · ') : '';
     return `حُلّل ${r.analyzed} → ${r.found} مشكلة` + (r.found === 0 && top ? ` (أعلى تقييم ${top.score} والحد ${r.threshold})` : '') + (src ? ` | ${src}` : '');
   }
+  if (j.action === 'discover_leads') return `فُحص ${r.scanned ?? 0} نشاط في ${r.city ?? ''} → ${r.found ?? 0} عميل`;
   if (j.action === 'find_leads') return `فُحص ${r.scanned ?? 0} نشاط → ${r.found ?? 0} عميل${r.note ? ` (${r.note})` : ''}`;
   if (j.action === 'write_followup') return `${r.created ?? 0} متابعة جديدة`;
   return '';

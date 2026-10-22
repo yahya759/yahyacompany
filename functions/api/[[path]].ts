@@ -24,7 +24,7 @@ import { resolveModels } from '../../worker/llm';
 
 type Ctx = { request: Request; env: Env };
 
-const ACTIONS = new Set(['find_problems', 'build_solution', 'find_leads', 'write_message', 'write_followup']);
+const ACTIONS = new Set(['find_problems', 'build_solution', 'find_leads', 'discover_leads', 'write_message', 'write_followup']);
 
 const corsHeaders = (): Record<string, string> => ({
   'access-control-allow-origin': '*',

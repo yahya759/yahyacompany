@@ -39,6 +39,7 @@ export const ACTION_LABELS: Record<JobAction, { ar: string; en: string; category
   find_problems: { ar: 'رادار المشاكل', en: 'Problem Radar', category: 'الرصد' },
   build_solution: { ar: 'بناء الحل', en: 'Solution Builder', category: 'التحليل' },
   find_leads: { ar: 'البحث عن عملاء', en: 'Lead Finder', category: 'المبيعات' },
+  discover_leads: { ar: 'اكتشاف عملاء', en: 'Lead Discovery', category: 'المبيعات' },
   write_message: { ar: 'كتابة الرسائل', en: 'Message Writer', category: 'التواصل' },
   write_followup: { ar: 'كتابة المتابعات', en: 'Follow-up Writer', category: 'التواصل' },
 };
