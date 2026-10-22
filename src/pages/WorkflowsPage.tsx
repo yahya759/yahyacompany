@@ -7,6 +7,20 @@ import { Btn } from '../components/ui';
 import type { N8nWorkflow } from '../types/dashboard';
 import type { PageCtx } from './types';
 
+const jobSummary = (j: any): string => {
+  const r = j.result;
+  if (j.status !== 'done' || !r) return '';
+  if (j.action === 'find_problems') {
+    if (!r.analyzed) return r.note || 'لا نتائج';
+    const top = r.topRejected?.[0];
+    const src = r.sources ? Object.entries(r.sources).map(([k, v]: any) => `${k}: ${v.usable}/${v.fetched}`).join(' · ') : '';
+    return `حُلّل ${r.analyzed} → ${r.found} مشكلة` + (r.found === 0 && top ? ` (أعلى تقييم ${top.score} والحد ${r.threshold})` : '') + (src ? ` | ${src}` : '');
+  }
+  if (j.action === 'find_leads') return `فُحص ${r.scanned ?? 0} نشاط → ${r.found ?? 0} عميل${r.note ? ` (${r.note})` : ''}`;
+  if (j.action === 'write_followup') return `${r.created ?? 0} متابعة جديدة`;
+  return '';
+};
+
 export const WorkflowsPage: React.FC<{
   ctx: PageCtx;
   onTrigger: (id: string) => void;
@@ -51,7 +65,7 @@ export const WorkflowsPage: React.FC<{
                           {j.finished_at ? `${Math.round((new Date(j.finished_at).getTime() - new Date(j.created_at).getTime()) / 1000)} ث` : '—'}
                         </td>
                         <td className="py-2.5 px-2 text-slate-500 max-w-xs">
-                          {j.error ? <span className="text-rose-600">{j.error}</span> : <span dir="ltr" className="text-[11px]">{Object.keys(j.params || {}).length ? JSON.stringify(j.params).slice(0, 80) : '—'}</span>}
+                          {j.error ? <span className="text-rose-600">{j.error}</span> : jobSummary(j) ? <span className="text-slate-700 font-semibold">{jobSummary(j)}</span> : <span dir="ltr" className="text-[11px]">{Object.keys(j.params || {}).length ? JSON.stringify(j.params).slice(0, 80) : '—'}</span>}
                           {j.status === 'running' && (
                             <Btn variant="danger" className="mr-2 !py-1" onClick={async () => { try { await api.cancelJob(j.id); await ctx.refresh(); } catch (e: any) { ctx.toast(`فشل: ${e.message}`); } }}>
                               إلغاء

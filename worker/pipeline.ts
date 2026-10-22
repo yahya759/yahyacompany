@@ -192,6 +192,7 @@ async function startRadar(env: Env, sb: Db, job: Job): Promise<Step> {
 async function collectRadar(env: Env, sb: Db, job: Job, st: any): Promise<Step> {
   const lists: Cand[][] = [];
   const errors: string[] = [...(st.errors || [])];
+  const sources: Record<string, { fetched: number; usable: number }> = {};
   for (const r of st.runs as RunRef[]) {
     if (r.status !== RUN_OK) {
       errors.push(`${r.source}: ${r.status || 'لم ينتهِ'}`);
@@ -223,6 +224,7 @@ async function collectRadar(env: Env, sb: Db, job: Job, st: any): Promise<Step> 
               text: `[${place.title}] (${stars}★) ${body}`,
             });
         }
+    sources[r.source] = { fetched: items.length, usable: c.length };
     lists.push(c);
   }
 
@@ -238,8 +240,8 @@ async function collectRadar(env: Env, sb: Db, job: Job, st: any): Promise<Step> 
   );
   const candidates = roundRobin(fresh, 40);
   if (!candidates.length)
-    return { done: true, result: { found: 0, analyzed: 0, note: 'لا نتائج جديدة', errors } };
-  return analyzeRadar(env, sb, job, { phase: 'analyzing', ctx: st.ctx, candidates, idx: 0, found: 0, attempts: 0, errors, models: [] });
+    return { done: true, result: { found: 0, analyzed: 0, note: 'المصادر لم تُرجع نتائج جديدة صالحة للتحليل', sources, errors } };
+  return analyzeRadar(env, sb, job, { phase: 'analyzing', ctx: st.ctx, candidates, idx: 0, found: 0, attempts: 0, errors, models: [], sources, rejected: [] });
 }
 
 async function analyzeRadar(env: Env, sb: Db, job: Job, st: any): Promise<Step> {
@@ -255,7 +257,7 @@ async function analyzeRadar(env: Env, sb: Db, job: Job, st: any): Promise<Step> 
 أعد JSON فقط بهذا الشكل بدون أي نص آخر:
 {"results":[{"i":0,"is_problem":true,"problem_summary":"المشكلة بجملة أو جملتين بالعربية (لا تنقل النص حرفياً)","sector":"real-estate|ecommerce|fnb|healthcare|construction|services","who_suffers":"من يتضرر","pays_for_solution":true,"automation_fit":"high|medium|low","score":0}]}
 قواعد التقييم score من 0 إلى 100: ارفعه فقط إذا كانت المشكلة محددة ومتكررة وتكلّف وقتاً أو مالاً وقابلة للحل بأتمتة وصاحب العمل هو المشتري. الشكاوى العامة والإعلانات والمنشورات غير المتعلقة = is_problem:false وscore منخفض. لا تخترع تفاصيل غير موجودة في النص. أعد عنصراً لكل رقم #.`,
-      `القطاع المستهدف: ${st.ctx.sector || 'أي قطاع'}\n\n${prompt}`,
+      `القطاع المفضّل (تلميح فقط، لا ترفض مشكلة جيدة من قطاع آخر وصنّفها بقطاعها الصحيح): ${st.ctx.sector || 'أي قطاع'}\nكلمات البحث: ${(st.ctx.keywords || []).join('، ')}\n\n${prompt}`,
       (v) => isObj(v) && Array.isArray(v.results),
     );
     const rows = data.results
@@ -277,6 +279,13 @@ async function analyzeRadar(env: Env, sb: Db, job: Job, st: any): Promise<Step> 
         };
       });
     const inserted = await sb.insertSkipDuplicates('problems', rows);
+    // Keep a few rejected items (with scores) so a "0 results" run can be explained.
+    const accepted = new Set(rows.map((r) => r.source_url));
+    for (const r of data.results)
+      if (r && Number.isInteger(r.i) && batch[r.i] && !accepted.has(batch[r.i].url))
+        st.rejected = [...(st.rejected || []), { source: batch[r.i].source, score: clamp(r.score), is_problem: !!r.is_problem, summary: String(r.problem_summary || batch[r.i].text).slice(0, 90) }]
+          .sort((a: any, b: any) => b.score - a.score)
+          .slice(0, 6);
     st.found += inserted.length;
     st.idx += batch.length;
     st.models = [...new Set([...(st.models || []), model])];
@@ -284,7 +293,18 @@ async function analyzeRadar(env: Env, sb: Db, job: Job, st: any): Promise<Step> 
     st.lastError = undefined;
   }
   if (st.idx >= cands.length)
-    return { done: true, result: { found: st.found, analyzed: cands.length, models: st.models, errors: st.errors } };
+    return {
+      done: true,
+      result: {
+        found: st.found,
+        analyzed: cands.length,
+        threshold: s.th.problem_score_min,
+        models: st.models,
+        sources: st.sources,
+        topRejected: st.found === 0 ? st.rejected : undefined,
+        errors: st.errors,
+      },
+    };
   return { done: false, state: st };
 }
 
